@@ -25,7 +25,7 @@ const WEDDING = {
   partner1: "Sadaat",
   partner2: "Daniya",
   weddingDateISO: "2026-07-18T11:15:00", // Nikah day — drives the live countdown
-  "e1-name": "Haldi",  // ...e2-, e3- for Nikah & Dinner
+  "e2-name": "Nikah",  // ...e3- for Dinner
   ...
 };
 ```

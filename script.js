@@ -11,11 +11,6 @@ const WEDDING = {
   weddingDateISO: "2026-07-18T11:15:00", // Nikah day — drives the live countdown
   "date-long": "Saturday, July 18, 2026",
 
-  "e1-name": "Haldi",
-  "e1-when": "Friday, 17th July 2026",
-  "e1-time": "6:00 PM onwards",
-  "e1-venue": "116 Shady Pt Ct, Andice, TX 78628",
-
   "e2-name": "Nikah",
   "e2-when": "Saturday, 18th July 2026",
   "e2-time": "11:15 AM",
@@ -35,10 +30,39 @@ const WEDDING = {
   //   Leave empty ("") to use a mailto: fallback instead.
   formspreeEndpoint: "",
   contactEmail: "you@example.com",
+
+  // Background music — add your legally purchased MP3 to this path:
+  musicFile: "music/i-found-love.mp3",
+  musicTitle: "Perfect — Ed Sheeran",
 };
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const rand = (a, b) => a + Math.random() * (b - a);
+
+function withGSAP(fn) {
+  if (window.gsap) {
+    if (window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
+    return fn(gsap, window.ScrollTrigger);
+  }
+  return null;
+}
+
+/** Animate a countdown digit change (gsap-core: autoAlpha + transform aliases). */
+function flipCountdownDigit(el, next) {
+  const padded = String(next).padStart(2, "0");
+  if (el.textContent === padded) return;
+  if (!window.gsap || reducedMotion) {
+    el.textContent = padded;
+    return;
+  }
+  gsap.fromTo(el,
+    { y: -10, autoAlpha: 0 },
+    {
+      y: 0, autoAlpha: 1, duration: 0.38, ease: "power2.out",
+      onStart: () => { el.textContent = padded; },
+    }
+  );
+}
 
 /* ---------- Populate fields from config ---------- */
 function applyConfig() {
@@ -123,7 +147,6 @@ function initCountdown() {
     seconds: document.querySelector('[data-cd="seconds"]'),
   };
   if (isNaN(target) || !els.days) return;
-  const pad = (n) => String(Math.max(0, n)).padStart(2, "0");
 
   function tick() {
     const diff = target - Date.now();
@@ -132,10 +155,10 @@ function initCountdown() {
       clearInterval(timer);
       return;
     }
-    els.days.textContent = pad(Math.floor(diff / 86400000));
-    els.hours.textContent = pad(Math.floor((diff % 86400000) / 3600000));
-    els.minutes.textContent = pad(Math.floor((diff % 3600000) / 60000));
-    els.seconds.textContent = pad(Math.floor((diff % 60000) / 1000));
+    flipCountdownDigit(els.days, Math.floor(diff / 86400000));
+    flipCountdownDigit(els.hours, Math.floor((diff % 86400000) / 3600000));
+    flipCountdownDigit(els.minutes, Math.floor((diff % 3600000) / 60000));
+    flipCountdownDigit(els.seconds, Math.floor((diff % 60000) / 1000));
   }
   tick();
   const timer = setInterval(tick, 1000);
@@ -153,26 +176,57 @@ function initNav() {
 }
 
 /* ============================================================
-   REVEAL ON SCROLL (GSAP ScrollTrigger if available, else IO)
+   REVEAL ON SCROLL — ScrollTrigger.batch + gsap.matchMedia
    ============================================================ */
+/** Hero sits at the top — reveal it when the intro hands off (scroll triggers miss it). */
+function revealHero() {
+  const heroItems = document.querySelectorAll("#hero .reveal");
+  if (!heroItems.length) return;
+  heroItems.forEach((el) => el.classList.add("is-visible"));
+  if (window.gsap) {
+    gsap.to(heroItems, {
+      autoAlpha: 1, y: 0, duration: 1.1, ease: "power2.out", stagger: 0.12,
+      onComplete: () => { if (window.ScrollTrigger) ScrollTrigger.refresh(); },
+    });
+  }
+}
+
 function initReveal() {
   const items = Array.from(document.querySelectorAll(".reveal"));
   if (!items.length) return;
 
-  if (window.gsap && window.ScrollTrigger) {
-    gsap.registerPlugin(ScrollTrigger);
-    items.forEach((el) => {
-      gsap.fromTo(el,
-        { autoAlpha: 0, y: 36 },
-        {
-          autoAlpha: 1, y: 0, duration: 1, ease: "power2.out",
-          scrollTrigger: { trigger: el, start: "top 85%", once: true },
-          onStart: () => el.classList.add("is-visible"),
-        }
-      );
+  const usedGSAP = withGSAP((gsap, ScrollTrigger) => {
+    // Hero is above the fold — hide only non-hero sections until scroll
+    const scrollItems = items.filter((el) => !el.closest("#hero"));
+    gsap.set(scrollItems, { autoAlpha: 0, y: 36 });
+    gsap.set("#hero .reveal", { autoAlpha: 0, y: 24 });
+
+    const mm = gsap.matchMedia();
+    mm.add("(prefers-reduced-motion: reduce)", () => {
+      gsap.set(".reveal", { autoAlpha: 1, y: 0, clearProps: "transform" });
+      items.forEach((el) => el.classList.add("is-visible"));
     });
-    return;
-  }
+
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      ScrollTrigger.batch(scrollItems, {
+        start: "top 85%",
+        once: true,
+        onEnter: (elements) => {
+          elements.forEach((el) => el.classList.add("is-visible"));
+          gsap.to(elements, {
+            autoAlpha: 1,
+            y: 0,
+            duration: 1,
+            ease: "power2.out",
+            stagger: { each: 0.1, from: "start" },
+          });
+        },
+      });
+    });
+    return true;
+  });
+
+  if (usedGSAP) return;
 
   if (!("IntersectionObserver" in window)) {
     items.forEach((el) => el.classList.add("is-visible"));
@@ -190,25 +244,31 @@ function initReveal() {
 }
 
 /* ============================================================
-   PARALLAX (hero drifts gently on scroll)
+   PARALLAX — ScrollTrigger scrub (replaces scroll listener)
    ============================================================ */
 function initParallax() {
-  if (reducedMotion) return;
   const oval = document.querySelector(".hero__oval");
-  if (!oval) return;
-  let ticking = false;
-  window.addEventListener("scroll", () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const y = window.scrollY;
-      if (y < window.innerHeight) {
-        oval.style.transform = `translateY(${y * 0.12}px)`;
-        oval.style.opacity = String(Math.max(0, 1 - y / (window.innerHeight * 0.9)));
-      }
-      ticking = false;
+  const hero = document.getElementById("hero");
+  if (!oval || !hero) return;
+
+  withGSAP((gsap, ScrollTrigger) => {
+    const mm = gsap.matchMedia();
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      gsap.set(oval, { autoAlpha: 1, y: 0 });
+      gsap.to(oval, {
+        y: () => window.innerHeight * 0.12,
+        autoAlpha: 0,
+        ease: "none",
+        scrollTrigger: {
+          trigger: hero,
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+          invalidateOnRefresh: true,
+        },
+      });
     });
-  }, { passive: true });
+  });
 }
 
 /* ============================================================
@@ -265,37 +325,164 @@ function initPetals() {
 }
 
 /* ============================================================
-   AMBIENT MUSIC
+   BACKGROUND MUSIC (your MP3) + CINEMATIC SFX
    ============================================================ */
-let musicEl, musicBtn, musicReady = false;
-function initMusic() {
-  musicEl = document.getElementById("music");
-  musicBtn = document.getElementById("musicToggle");
-  if (!musicEl || !musicBtn) return;
-  musicBtn.addEventListener("click", () => {
-    if (musicEl.paused) startMusic(true);
-    else { musicEl.pause(); musicBtn.classList.remove("is-playing"); }
-  });
-}
-function startMusic(force) {
-  if (!musicEl) return;
-  musicEl.volume = 0;
-  const p = musicEl.play();
-  if (p && p.catch) {
-    p.then(() => {
-      musicReady = true;
-      musicBtn.classList.add("is-playing");
-      let v = 0;
-      const ramp = setInterval(() => {
-        v = Math.min(0.55, v + 0.04);
-        musicEl.volume = v;
-        if (v >= 0.55) clearInterval(ramp);
-      }, 90);
-    }).catch(() => {
-      // No audio file / autoplay blocked — stay silent
-      if (force) musicBtn.classList.remove("is-playing");
+const BackgroundMusic = {
+  el: null, ready: false, playing: false, maxVol: 0.72, swellRaf: 0,
+
+  init() {
+    this.el = document.getElementById("music");
+    if (!this.el || !WEDDING.musicFile) return;
+    const src = this.el.querySelector("source");
+    if (src) src.src = WEDDING.musicFile;
+    this.el.load();
+    this.el.addEventListener("canplaythrough", () => { this.ready = true; }, { once: true });
+    this.el.addEventListener("error", () => { this.ready = false; });
+  },
+
+  targetVol(level) {
+    return Math.min(this.maxVol, 0.06 + level * 0.66);
+  },
+
+  swell(level, durationSec = 2.4) {
+    if (!this.el || !this.playing) return;
+    const target = this.targetVol(level);
+    const start = this.el.volume;
+    const t0 = performance.now();
+    const dur = durationSec * 1000;
+    cancelAnimationFrame(this.swellRaf);
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      const ease = p * p * (3 - 2 * p);
+      this.el.volume = start + (target - start) * ease;
+      if (p < 1) this.swellRaf = requestAnimationFrame(step);
+    };
+    this.swellRaf = requestAnimationFrame(step);
+  },
+
+  async play(startLevel = 0.12) {
+    if (!this.el) return false;
+    this.el.volume = this.targetVol(startLevel);
+    try {
+      await this.el.play();
+      this.playing = true;
+      if (musicBtn) musicBtn.classList.add("is-playing");
+      return true;
+    } catch (_) {
+      this.playing = false;
+      if (musicBtn) musicBtn.classList.remove("is-playing");
+      return false;
+    }
+  },
+
+  pause() {
+    if (!this.el) return;
+    cancelAnimationFrame(this.swellRaf);
+    this.el.pause();
+    this.playing = false;
+    if (musicBtn) musicBtn.classList.remove("is-playing");
+  },
+
+  toggle() {
+    if (this.playing) this.pause();
+    else this.play().then((ok) => { if (ok) this.swell(0.55, 1.8); });
+  },
+};
+
+const CinematicAudio = {
+  ctx: null, master: null, sfxGain: null,
+
+  init() {
+    if (this.ctx) return this.ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.85;
+    this.master.connect(this.ctx.destination);
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = 0.7;
+    this.sfxGain.connect(this.master);
+    return this.ctx;
+  },
+
+  resume() {
+    if (!this.ctx) this.init();
+    if (this.ctx && this.ctx.state === "suspended") return this.ctx.resume();
+    return Promise.resolve();
+  },
+
+  /** Fade background track during the cinematic intro (0 = quiet … 1 = full). */
+  swellMusic(level, durationSec = 2.4) {
+    BackgroundMusic.swell(level, durationSec);
+  },
+
+  playCrack() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.15, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    src.connect(g); g.connect(this.sfxGain);
+    src.start(t);
+  },
+
+  playWhoosh() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 1.2, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const filt = this.ctx.createBiquadFilter();
+    filt.type = "bandpass";
+    filt.frequency.setValueAtTime(400, t);
+    filt.frequency.exponentialRampToValueAtTime(2400, t + 0.8);
+    filt.Q.value = 0.8;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.35, t + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    src.connect(filt); filt.connect(g); g.connect(this.sfxGain);
+    src.start(t);
+  },
+
+  playShimmer() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [1046.5, 1318.5, 1568.0].forEach((f, i) => {
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + i * 0.05);
+      g.gain.linearRampToValueAtTime(0.06, t + i * 0.05 + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.05 + 1.2);
+      o.connect(g); g.connect(this.sfxGain);
+      o.start(t + i * 0.05); o.stop(t + i * 0.05 + 1.3);
     });
-  }
+  },
+
+};
+
+let musicBtn;
+function initMusic() {
+  musicBtn = document.getElementById("musicToggle");
+  BackgroundMusic.init();
+  if (!musicBtn) return;
+  musicBtn.addEventListener("click", () => BackgroundMusic.toggle());
+}
+function startMusic() {
+  CinematicAudio.init();
+  CinematicAudio.resume();
+  BackgroundMusic.play(0.08).then((ok) => {
+    if (ok) BackgroundMusic.swell(0.18, 2.2);
+  });
 }
 
 /* ============================================================
@@ -416,37 +603,83 @@ function initLoader() {
 }
 
 /* ============================================================
-   CINEMATIC INTRO
+   AMBIENT PARTICLES (idle intro atmosphere)
+   ============================================================ */
+function initAmbientParticles() {
+  const canvas = document.getElementById("ambientCanvas");
+  if (!canvas || reducedMotion) return;
+  const ctx = canvas.getContext("2d");
+  let W, H, DPR, dots = [];
+
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const n = Math.round(Math.min(48, Math.max(22, W / 38)));
+    dots = Array.from({ length: n }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      r: rand(1, 2.8), sp: rand(0.15, 0.55),
+      ph: Math.random() * Math.PI * 2,
+      a: rand(0.15, 0.45),
+      hue: Math.random() < 0.5 ? "#fff4d6" : "#f5e2e6",
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const d of dots) {
+      d.y -= d.sp; d.ph += 0.012; d.x += Math.sin(d.ph) * 0.25;
+      if (d.y < -4) { d.y = H + 4; d.x = Math.random() * W; }
+      ctx.globalAlpha = d.a;
+      const g = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 3);
+      g.addColorStop(0, d.hue); g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (!document.getElementById("intro")?.classList.contains("is-done")) {
+      requestAnimationFrame(draw);
+    }
+  }
+  resize();
+  window.addEventListener("resize", resize);
+  requestAnimationFrame(draw);
+}
+
+/* ============================================================
+   CINEMATIC INTRO — GSAP timeline + butterfly swarm
    ============================================================ */
 function initIntro() {
   const intro = document.getElementById("intro");
-  const envScene = document.getElementById("envScene");
-  const envCard = document.getElementById("envCard");
+  const stage = document.getElementById("cinematicStage");
+  const envelope = document.getElementById("luxuryEnvelope");
   const seal = document.getElementById("waxSeal");
+  const shards = document.getElementById("sealShards");
   const hint = document.getElementById("envHint");
   const curtains = document.getElementById("curtains");
   const canvas = document.getElementById("introCanvas");
   const names = document.getElementById("introNames");
   const body = document.body;
 
-  if (!intro || !envCard) { body.classList.remove("intro-active"); return; }
+  if (!intro || !envelope) { body.classList.remove("intro-active"); return; }
 
   const ctx = canvas && canvas.getContext ? canvas.getContext("2d") : null;
   let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, A = 0, B = 0;
-  let particles = [], sparks = [];
+  let particles = [], sparks = [], goldDust = [];
   let raf = 0, startTime = 0, dispersed = false, canvasAlpha = 1;
 
-  const T_BURST = 850;
-  const T_ARRANGE = 2700;
-  const T_NAMES = 2900;
-  const T_DISPERSE = 6300;
-  const T_FINISH = 8300;
+  const T_BURST = 900, T_ARRANGE = 3000, T_NAMES = 3200, T_DISPERSE = 7000, T_FINISH = 9200;
 
   function finish() {
     intro.classList.add("is-done");
     body.classList.remove("intro-active");
     window.scrollTo({ top: 0, behavior: "auto" });
-    setTimeout(() => intro.remove(), 1000);
+    revealHero();
+    setTimeout(() => {
+      intro.remove();
+      if (window.ScrollTrigger) ScrollTrigger.refresh();
+    }, 1100);
   }
 
   function resize() {
@@ -469,51 +702,51 @@ function initIntro() {
       if (isOval) {
         const ring = i % 3;
         const ang = (i / ovalCount) * Math.PI * 2;
-        const ra = A * (1 + ring * 0.13) + rand(-12, 12);
-        const rb = B * (1 + ring * 0.13) + rand(-12, 12);
-        tx = cx + Math.cos(ang) * ra;
-        ty = cy + Math.sin(ang) * rb;
+        tx = cx + Math.cos(ang) * (A * (1 + ring * 0.13) + rand(-12, 12));
+        ty = cy + Math.sin(ang) * (B * (1 + ring * 0.13) + rand(-12, 12));
       } else {
         tx = rand(0.03, 0.97) * W; ty = rand(0.05, 0.95) * H;
-        for (let tries = 0; tries < 6; tries++) {
-          const nx = (tx - cx) / (A * 0.95), ny = (ty - cy) / (B * 0.95);
-          if (nx * nx + ny * ny > 1.05) break;
-          tx = rand(0.03, 0.97) * W; ty = rand(0.05, 0.95) * H;
-        }
       }
       const depth = rand(0.45, 1);
-      const base = isOval ? rand(26, 44) : rand(18, 50);
       const p = {
-        x: cx + rand(-26, 26), y: cy + rand(-18, 18),
-        tx, ty, isOval, depth,
-        size: base * (0.65 + 0.35 * depth),
+        x: cx + rand(-26, 26), y: cy + rand(-18, 18), tx, ty, isOval, depth,
+        size: (isOval ? rand(26, 44) : rand(18, 50)) * (0.65 + 0.35 * depth),
         alpha: 0.45 + 0.55 * depth,
         rot: rand(-0.5, 0.5), rotSpeed: rand(-0.7, 0.7),
         flap: Math.random() * Math.PI * 2, flapSpeed: rand(9, 16) * (0.8 + 0.4 * depth),
         tex: (Math.random() * butterflyTextures.length) | 0,
         driftA: Math.random() * Math.PI * 2,
         driftR: (isOval ? rand(5, 12) : rand(10, 26)) * depth,
-        driftS: rand(0.5, 1.2),
-        bvx: 0, bvy: 0, dvx: 0, dvy: 0,
+        driftS: rand(0.5, 1.2), bvx: 0, bvy: 0, dvx: 0, dvy: 0,
       };
       const a = Math.atan2(p.y - cy, p.x - cx) + rand(-0.5, 0.5);
       const spd = rand(8, 18) * (0.7 + 0.5 * depth);
       p.bvx = Math.cos(a) * spd; p.bvy = Math.sin(a) * spd;
       particles.push(p);
     }
-    // sort by depth so far (small) butterflies draw first → parallax depth
     particles.sort((m, n) => m.depth - n.depth);
   }
 
   function makeSparks(n) {
     sparks = [];
     for (let i = 0; i < n; i++) {
-      const a = rand(0, Math.PI * 2), spd = rand(2, 9);
+      const a = rand(0, Math.PI * 2), spd = rand(2, 11);
       sparks.push({
-        x: cx + rand(-20, 20), y: cy + rand(-14, 14),
-        vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - rand(0, 3),
-        r: rand(1.5, 4), life: 1, decay: rand(0.008, 0.02),
-        color: Math.random() < 0.5 ? "#fff4d6" : "#ffffff",
+        x: cx + rand(-30, 30), y: cy + rand(-20, 20),
+        vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - rand(0, 4),
+        r: rand(1.5, 5), life: 1, decay: rand(0.006, 0.018),
+        color: Math.random() < 0.6 ? "#fff4d6" : "#ffffff",
+      });
+    }
+  }
+
+  function makeGoldDust(n) {
+    goldDust = [];
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2), spd = rand(3, 14);
+      goldDust.push({
+        x: cx, y: cy, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - rand(2, 6),
+        r: rand(1, 3), life: 1, decay: rand(0.004, 0.012),
       });
     }
   }
@@ -524,9 +757,7 @@ function initIntro() {
     const sx = 0.42 + 0.58 * Math.abs(Math.sin(p.flap));
     ctx.save();
     ctx.globalAlpha = canvasAlpha * p.alpha;
-    ctx.translate(p.x, p.y);
-    ctx.rotate(p.rot);
-    ctx.scale(sx, 1);
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(sx, 1);
     ctx.drawImage(tex.canvas, -p.size / 2, -p.size / 2, p.size, p.size);
     ctx.restore();
   }
@@ -537,17 +768,28 @@ function initIntro() {
     const dt = 1 / 60;
     ctx.clearRect(0, 0, W, H);
 
-    // magical sparks
+    if (goldDust.length) {
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      for (const g of goldDust) {
+        g.x += g.vx; g.y += g.vy; g.vy += 0.06; g.life -= g.decay;
+        if (g.life <= 0) continue;
+        ctx.globalAlpha = g.life * canvasAlpha;
+        ctx.fillStyle = "#ffd878";
+        ctx.beginPath(); ctx.arc(g.x, g.y, g.r * 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      goldDust = goldDust.filter((g) => g.life > 0);
+    }
+
     if (sparks.length) {
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
       for (const s of sparks) {
         s.x += s.vx; s.y += s.vy; s.vy += 0.04; s.life -= s.decay;
         if (s.life <= 0) continue;
         ctx.globalAlpha = Math.max(0, s.life) * canvasAlpha;
-        const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 3);
-        g.addColorStop(0, s.color); g.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = g;
+        const grd = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 3);
+        grd.addColorStop(0, s.color); grd.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2); ctx.fill();
       }
       ctx.restore();
@@ -563,36 +805,46 @@ function initIntro() {
         const arranged = t >= T_ARRANGE;
         const dox = arranged ? Math.cos(p.driftA + t * 0.001 * p.driftS) * p.driftR : 0;
         const doy = arranged ? Math.sin(p.driftA + t * 0.0013 * p.driftS) * p.driftR : 0;
-        const ease = 0.055;
-        p.x += (p.tx + dox - p.x) * ease;
-        p.y += (p.ty + doy - p.y) * ease;
+        p.x += (p.tx + dox - p.x) * 0.055;
+        p.y += (p.ty + doy - p.y) * 0.055;
         p.rot += (Math.sin(p.flap * 0.08) * 0.18 - p.rot) * 0.04;
       } else {
-        p.x += p.dvx; p.y += p.dvy; p.dvy += 0.05;
-        p.rot += p.rotSpeed * dt;
+        p.x += p.dvx; p.y += p.dvy; p.dvy += 0.05; p.rot += p.rotSpeed * dt;
       }
       drawButterfly(p);
     }
-
     ctx.globalAlpha = 1;
-    if (dispersed) canvasAlpha = Math.max(0, canvasAlpha - 0.012);
+    if (dispersed) canvasAlpha = Math.max(0, canvasAlpha - 0.01);
     raf = requestAnimationFrame(frame);
   }
 
   const onResize = () => resize();
 
+  function startBurstFX() {
+    if (!ctx) return;
+    resize();
+    window.addEventListener("resize", onResize);
+    makeGoldDust(90);
+    makeSparks(110);
+    if (!raf) {
+      startTime = performance.now();
+      raf = requestAnimationFrame(frame);
+    }
+  }
+
   function runCanvasIntro() {
     if (!ctx) { setTimeout(finish, 1400); return; }
     resize();
-    window.addEventListener("resize", onResize);
-    const count = Math.max(180, Math.min(400, Math.round((W * H) / 4600)));
+    if (!raf) window.addEventListener("resize", onResize);
+    const count = Math.max(200, Math.min(400, Math.round((W * H) / 4400)));
     makeParticles(count);
-    makeSparks(110);
-    startTime = 0;
-    raf = requestAnimationFrame(frame);
-
+    makeSparks(60);
+    makeGoldDust(40);
+    if (!raf) {
+      startTime = performance.now();
+      raf = requestAnimationFrame(frame);
+    }
     setTimeout(() => { if (names) names.classList.add("show"); }, T_NAMES);
-
     setTimeout(() => {
       dispersed = true;
       for (const p of particles) {
@@ -601,7 +853,6 @@ function initIntro() {
         p.dvx = Math.cos(a) * spd; p.dvy = Math.sin(a) * spd - rand(0, 4);
       }
     }, T_DISPERSE);
-
     setTimeout(finish, T_FINISH);
     setTimeout(() => {
       cancelAnimationFrame(raf);
@@ -609,41 +860,134 @@ function initIntro() {
     }, T_FINISH + 1400);
   }
 
-  let opened = false;
-  function open() {
-    if (opened) return;
-    opened = true;
-    if (hint) hint.classList.add("is-hidden");
-    startMusic(false);
+  function spawnSealShards() {
+    if (!shards || !seal) return;
+    shards.innerHTML = "";
+    const offsets = [
+      { x: -28, y: -22, r: -35, clip: "polygon(0 0, 100% 0, 50% 100%)" },
+      { x: 30, y: -18, r: 40, clip: "polygon(0 0, 100% 50%, 0 100%)" },
+      { x: 24, y: 26, r: 55, clip: "polygon(100% 0, 100% 100%, 0 50%)" },
+      { x: -26, y: 24, r: -50, clip: "polygon(0 0, 100% 100%, 0 100%)" },
+      { x: 0, y: -34, r: 12, clip: "polygon(50% 0, 100% 100%, 0 100%)" },
+      { x: -12, y: 8, r: -20, clip: "polygon(0 0, 100% 0, 100% 100%)" },
+      { x: 14, y: 6, r: 28, clip: "polygon(0 0, 100% 50%, 50% 100%)" },
+      { x: 0, y: 30, r: -8, clip: "polygon(0 0, 100% 0, 50% 100%)" },
+    ];
+    offsets.forEach((o, i) => {
+      const el = document.createElement("span");
+      el.className = "seal-shard";
+      el.style.clipPath = o.clip;
+      el.style.backgroundPosition = `${50 + (i % 3) * 8}% ${50 + (i % 2) * 10}%`;
+      shards.appendChild(el);
+      if (window.gsap) {
+        gsap.set(el, { x: 0, y: 0, rotation: 0, opacity: 0 });
+        gsap.to(el, {
+          opacity: 1, x: o.x * 2.2, y: o.y * 2.2, rotation: o.r,
+          duration: 0.9, delay: 0.05 * i, ease: "power3.out",
+          onStart: () => el.classList.add("is-flying"),
+        });
+        gsap.to(el, { opacity: 0, y: o.y * 2.2 + 40, duration: 0.6, delay: 0.7 + i * 0.04, ease: "power2.in" });
+      } else {
+        el.classList.add("is-flying");
+        el.style.transform = `translate(calc(-50% + ${o.x * 2}px), calc(-50% + ${o.y * 2}px)) rotate(${o.r}deg)`;
+        el.style.opacity = "0";
+        setTimeout(() => { el.style.opacity = "1"; }, i * 50);
+        setTimeout(() => { el.style.opacity = "0"; }, 900 + i * 40);
+      }
+    });
+  }
 
-    // 1) seal cracks
-    if (seal) seal.classList.add("is-cracked");
+  function runCinematicTimeline() {
+    CinematicAudio.init();
+    CinematicAudio.resume();
+    startMusic();
 
-    if (reducedMotion || !ctx) {
-      if (envScene) envScene.classList.add("gone");
+    if (reducedMotion || !window.gsap) {
+      if (seal) { seal.classList.add("is-glowing", "is-cracking", "is-shattered"); }
+      envelope.classList.add("is-shaking", "is-open", "is-gone");
+      if (curtains) curtains.classList.add("is-visible", "is-open", "is-blazing");
       if (names) names.classList.add("show");
-      setTimeout(finish, 1400);
+      CinematicAudio.swellMusic(0.85, 1.5);
+      setTimeout(runCanvasIntro, 400);
       return;
     }
 
-    // 2) card lifts away, curtains appear (closed)
-    setTimeout(() => {
-      if (envScene) envScene.classList.add("gone");
-      if (curtains) curtains.classList.add("is-visible");
-    }, 560);
+    const tl = gsap.timeline({ defaults: { ease: "power2.inOut" } });
 
-    // 3) curtains part + butterflies pour out
-    setTimeout(() => {
-      if (curtains) curtains.classList.add("is-open");
-      runCanvasIntro();
-    }, 1100);
+    // 1) Seal glows with golden light
+    tl.call(() => seal.classList.add("is-glowing"), null, 0);
+    tl.to(".wax-seal__glow", { scale: 1.15, duration: 1.2, ease: "sine.inOut", repeat: 1, yoyo: true }, 0);
+    tl.call(() => CinematicAudio.playShimmer(), null, 0.3);
+
+    // 2) Cracks spread in slow motion
+    tl.call(() => seal.classList.add("is-cracking"), null, 0.6);
+    tl.to(".wax-seal__cracks .crack", {
+      strokeDashoffset: 0, opacity: 1, duration: 1.1, stagger: 0.12, ease: "power1.out",
+    }, 0.7);
+
+    // 3) Seal shatters + crack SFX
+    tl.call(() => {
+      CinematicAudio.playCrack();
+      CinematicAudio.swellMusic(0.42, 1.8);
+      seal.classList.add("is-shattered");
+      spawnSealShards();
+    }, null, 2.0);
+
+    // 4) Envelope vibrates — magic waiting inside
+    tl.call(() => {
+      envelope.classList.add("is-shaking");
+      CinematicAudio.playShimmer();
+    }, null, 2.5);
+    tl.to(envelope, { x: 0, duration: 0.55 }, 2.5);
+
+    // 5) Flap opens dramatically + camera zooms in
+    tl.call(() => envelope.classList.add("is-open"), null, 3.2);
+    tl.to(stage, { scale: 1.14, duration: 2.8, ease: "power1.inOut" }, 3.0);
+    tl.call(() => CinematicAudio.swellMusic(0.62, 2.2), null, 3.4);
+
+    // 6) Golden burst from envelope interior
+    tl.call(() => {
+      startBurstFX();
+      CinematicAudio.playShimmer();
+    }, null, 4.0);
+
+    // 7) Envelope fades — royal curtains appear
+    tl.call(() => {
+      envelope.classList.add("is-gone");
+      if (curtains) curtains.classList.add("is-visible");
+    }, null, 4.6);
+
+    // 8) Curtains part — cinematic trailer moment
+    tl.call(() => {
+      if (curtains) curtains.classList.add("is-open", "is-blazing");
+      CinematicAudio.playWhoosh();
+      CinematicAudio.swellMusic(1.0, 2.8);
+      CinematicAudio.playShimmer();
+    }, null, 5.4);
+
+    // 9) Butterfly swarm + names reveal
+    tl.call(runCanvasIntro, null, 6.0);
   }
 
-  if (seal) seal.addEventListener("click", (e) => { e.stopPropagation(); open(); });
-  envCard.addEventListener("click", open);
-  envCard.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+  let opened = false;
+  function open(e) {
+    if (opened) return;
+    opened = true;
+    if (e) e.stopPropagation();
+    if (hint) hint.classList.add("is-hidden");
+    runCinematicTimeline();
+  }
+
+  if (seal) seal.addEventListener("click", open);
+  envelope.addEventListener("click", (e) => {
+    if (e.target === seal || seal?.contains(e.target)) return;
+    open(e);
   });
+  envelope.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); }
+  });
+
+  initAmbientParticles();
 }
 
 /* ============================================================
