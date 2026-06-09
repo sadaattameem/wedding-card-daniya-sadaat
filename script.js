@@ -37,7 +37,16 @@ const WEDDING = {
 };
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const isMobile = window.matchMedia("(max-width: 768px)").matches;
+const isNarrow = window.matchMedia("(max-width: 480px)").matches;
 const rand = (a, b) => a + Math.random() * (b - a);
+
+function butterflyCount() {
+  const area = window.innerWidth * window.innerHeight;
+  if (isNarrow) return Math.max(70, Math.min(140, Math.round(area / 7500)));
+  if (isMobile) return Math.max(100, Math.min(220, Math.round(area / 5800)));
+  return Math.max(200, Math.min(400, Math.round(area / 4400)));
+}
 
 function withGSAP(fn) {
   if (window.gsap) {
@@ -169,10 +178,32 @@ function initCountdown() {
    ============================================================ */
 function initNav() {
   const nav = document.getElementById("nav");
+  const toggle = document.getElementById("navToggle");
+  const links = document.getElementById("navLinks");
+  const backdrop = document.getElementById("navBackdrop");
   if (!nav) return;
+
   const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 40);
   onScroll();
   window.addEventListener("scroll", onScroll, { passive: true });
+
+  function setMenu(open) {
+    nav.classList.toggle("is-open", open);
+    if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (toggle) toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    document.body.classList.toggle("nav-open", open);
+  }
+
+  if (toggle && links) {
+    toggle.addEventListener("click", () => setMenu(!nav.classList.contains("is-open")));
+    backdrop?.addEventListener("click", () => setMenu(false));
+    links.querySelectorAll("a").forEach((a) => {
+      a.addEventListener("click", () => setMenu(false));
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setMenu(false);
+    });
+  }
 }
 
 /* ============================================================
@@ -289,7 +320,7 @@ function initPetals() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
   function make() {
-    const count = Math.round(Math.min(34, Math.max(16, W / 46)));
+    const count = Math.round(Math.min(isNarrow ? 18 : isMobile ? 24 : 34, Math.max(12, W / (isNarrow ? 56 : 46))));
     petals = [];
     for (let i = 0; i < count; i++) {
       petals.push({
@@ -328,7 +359,7 @@ function initPetals() {
    BACKGROUND MUSIC (your MP3) + CINEMATIC SFX
    ============================================================ */
 const BackgroundMusic = {
-  el: null, ready: false, playing: false, maxVol: 0.72, swellRaf: 0,
+  el: null, ready: false, playing: false, maxVol: 0.38, swellRaf: 0,
 
   init() {
     this.el = document.getElementById("music");
@@ -341,7 +372,7 @@ const BackgroundMusic = {
   },
 
   targetVol(level) {
-    return Math.min(this.maxVol, 0.06 + level * 0.66);
+    return Math.min(this.maxVol, 0.03 + level * 0.35);
   },
 
   swell(level, durationSec = 2.4) {
@@ -385,7 +416,7 @@ const BackgroundMusic = {
 
   toggle() {
     if (this.playing) this.pause();
-    else this.play().then((ok) => { if (ok) this.swell(0.55, 1.8); });
+    else this.play().then((ok) => { if (ok) this.swell(0.32, 1.8); });
   },
 };
 
@@ -480,8 +511,8 @@ function initMusic() {
 function startMusic() {
   CinematicAudio.init();
   CinematicAudio.resume();
-  BackgroundMusic.play(0.08).then((ok) => {
-    if (ok) BackgroundMusic.swell(0.18, 2.2);
+  BackgroundMusic.play(0.04).then((ok) => {
+    if (ok) BackgroundMusic.swell(0.1, 2.4);
   });
 }
 
@@ -654,6 +685,9 @@ function initIntro() {
   const intro = document.getElementById("intro");
   const stage = document.getElementById("cinematicStage");
   const envelope = document.getElementById("luxuryEnvelope");
+  const envTop = document.getElementById("envTop");
+  const envBottom = document.getElementById("envBottom");
+  const envBloom = document.getElementById("envBloom");
   const seal = document.getElementById("waxSeal");
   const shards = document.getElementById("sealShards");
   const hint = document.getElementById("envHint");
@@ -824,8 +858,8 @@ function initIntro() {
     if (!ctx) return;
     resize();
     window.addEventListener("resize", onResize);
-    makeGoldDust(90);
-    makeSparks(110);
+    makeGoldDust(isNarrow ? 45 : isMobile ? 60 : 90);
+    makeSparks(isNarrow ? 55 : isMobile ? 75 : 110);
     if (!raf) {
       startTime = performance.now();
       raf = requestAnimationFrame(frame);
@@ -836,7 +870,7 @@ function initIntro() {
     if (!ctx) { setTimeout(finish, 1400); return; }
     resize();
     if (!raf) window.addEventListener("resize", onResize);
-    const count = Math.max(200, Math.min(400, Math.round((W * H) / 4400)));
+    const count = butterflyCount();
     makeParticles(count);
     makeSparks(60);
     makeGoldDust(40);
@@ -904,10 +938,10 @@ function initIntro() {
 
     if (reducedMotion || !window.gsap) {
       if (seal) { seal.classList.add("is-glowing", "is-cracking", "is-shattered"); }
-      envelope.classList.add("is-shaking", "is-open", "is-gone");
+      envelope.classList.add("is-shaking", "is-opening", "is-open", "is-gone");
       if (curtains) curtains.classList.add("is-visible", "is-open", "is-blazing");
       if (names) names.classList.add("show");
-      CinematicAudio.swellMusic(0.85, 1.5);
+      CinematicAudio.swellMusic(0.38, 1.5);
       setTimeout(runCanvasIntro, 400);
       return;
     }
@@ -917,7 +951,6 @@ function initIntro() {
     // 1) Seal glows with golden light
     tl.call(() => seal.classList.add("is-glowing"), null, 0);
     tl.to(".wax-seal__glow", { scale: 1.15, duration: 1.2, ease: "sine.inOut", repeat: 1, yoyo: true }, 0);
-    tl.call(() => CinematicAudio.playShimmer(), null, 0.3);
 
     // 2) Cracks spread in slow motion
     tl.call(() => seal.classList.add("is-cracking"), null, 0.6);
@@ -928,28 +961,38 @@ function initIntro() {
     // 3) Seal shatters + crack SFX
     tl.call(() => {
       CinematicAudio.playCrack();
-      CinematicAudio.swellMusic(0.42, 1.8);
+      CinematicAudio.swellMusic(0.2, 1.8);
       seal.classList.add("is-shattered");
       spawnSealShards();
     }, null, 2.0);
 
     // 4) Envelope vibrates — magic waiting inside
-    tl.call(() => {
-      envelope.classList.add("is-shaking");
-      CinematicAudio.playShimmer();
-    }, null, 2.5);
+    tl.call(() => envelope.classList.add("is-shaking"), null, 2.5);
     tl.to(envelope, { x: 0, duration: 0.55 }, 2.5);
 
-    // 5) Flap opens dramatically + camera zooms in
-    tl.call(() => envelope.classList.add("is-open"), null, 3.2);
-    tl.to(stage, { scale: 1.14, duration: 2.8, ease: "power1.inOut" }, 3.0);
-    tl.call(() => CinematicAudio.swellMusic(0.62, 2.2), null, 3.4);
+    // 5) Envelope splits — both halves open forward toward the viewer
+    tl.call(() => envelope.classList.add("is-opening", "is-open"), null, 3.1);
+    if (envTop && envBottom) {
+      gsap.set([envTop, envBottom], { transformPerspective: 1600, transformStyle: "preserve-3d" });
+      tl.to(envTop, {
+        rotateX: 92, y: "-4%", z: 56, duration: 2.2, ease: "power3.out",
+        transformOrigin: "bottom center",
+      }, 3.15);
+      tl.to(envBottom, {
+        rotateX: -96, y: "4%", z: 56, duration: 2.2, ease: "power3.out",
+        transformOrigin: "top center",
+      }, 3.15);
+    } else {
+      tl.call(() => envelope.classList.add("is-open"), null, 3.2);
+    }
+    if (envBloom) {
+      tl.to(envBloom, { scale: 1.2, opacity: 1, duration: 2, ease: "power2.out" }, 3.4);
+    }
+    tl.to(stage, { scale: isMobile ? 1.04 : 1.1, z: 30, duration: 2.8, ease: "power2.out" }, 3.1);
+    tl.call(() => CinematicAudio.swellMusic(0.28, 2.4), null, 3.4);
 
     // 6) Golden burst from envelope interior
-    tl.call(() => {
-      startBurstFX();
-      CinematicAudio.playShimmer();
-    }, null, 4.0);
+    tl.call(() => startBurstFX(), null, 4.0);
 
     // 7) Envelope fades — royal curtains appear
     tl.call(() => {
@@ -961,8 +1004,7 @@ function initIntro() {
     tl.call(() => {
       if (curtains) curtains.classList.add("is-open", "is-blazing");
       CinematicAudio.playWhoosh();
-      CinematicAudio.swellMusic(1.0, 2.8);
-      CinematicAudio.playShimmer();
+      CinematicAudio.swellMusic(0.42, 2.8);
     }, null, 5.4);
 
     // 9) Butterfly swarm + names reveal

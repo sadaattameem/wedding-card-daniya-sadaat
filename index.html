@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="With the blessings of Allah, you are invited to the wedding of Sadaat & Daniya." />
   <meta name="theme-color" content="#fbf7f0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="format-detection" content="telephone=no" />
 
   <meta property="og:title" content="Sadaat & Daniya · Wedding" />
   <meta property="og:description" content="Together with their families, request the honour of your presence." />
@@ -46,25 +49,35 @@
     <div class="cinematic-stage" id="cinematicStage">
       <div class="luxury-envelope" id="luxuryEnvelope" role="button" tabindex="0" aria-label="Tap the wax seal to open the invitation">
 
-        <!-- Envelope body -->
-        <div class="env-body">
-          <div class="env-paper" aria-hidden="true"></div>
-          <div class="env-floral-band" aria-hidden="true"></div>
-          <div class="env-foil-badge" aria-hidden="true">
-            <span>S</span><em>&amp;</em><span>D</span>
+        <!-- Golden light blooms from the seam as it opens -->
+        <div class="env-bloom" id="envBloom" aria-hidden="true"></div>
+
+        <!-- Bottom half — names fully visible when closed -->
+        <div class="env-gate env-gate--bottom" id="envBottom">
+          <div class="env-gate__inner">
+            <div class="env-gate__paper" aria-hidden="true"></div>
+            <div class="env-content">
+              <p class="env-invite">You are cordially invited</p>
+              <h1 class="env-couple">Sadaat <i>&amp;</i> Daniya</h1>
+              <p class="env-date" data-field="date-long">Saturday, July 18, 2026</p>
+            </div>
+            <div class="env-gate__edge env-gate__edge--top" aria-hidden="true"></div>
           </div>
-          <p class="env-invite">You are cordially invited</p>
-          <h1 class="env-couple">Sadaat <i>&amp;</i> Daniya</h1>
-          <p class="env-date" data-field="date-long">Saturday, July 18, 2026</p>
         </div>
 
-        <!-- Front pocket -->
-        <div class="env-pocket" aria-hidden="true"></div>
-
-        <!-- Triangular flap (opens upward) -->
-        <div class="env-flap" id="envFlap" aria-hidden="true">
-          <div class="env-flap__face"></div>
+        <!-- Top half — floral lid folds back -->
+        <div class="env-gate env-gate--top" id="envTop">
+          <div class="env-gate__inner">
+            <div class="env-gate__paper" aria-hidden="true"></div>
+            <div class="env-floral-band" aria-hidden="true"></div>
+            <div class="env-foil-badge" aria-hidden="true">
+              <span>S</span><em>&amp;</em><span>D</span>
+            </div>
+            <div class="env-gate__edge env-gate__edge--bottom" aria-hidden="true"></div>
+          </div>
         </div>
+
+        <div class="env-seam" aria-hidden="true"></div>
 
         <!-- Photorealistic wax seal (tap target) -->
         <button class="wax-seal" id="waxSeal" type="button" aria-label="Break the seal to open">
@@ -124,13 +137,19 @@
   <!-- ============ NAVIGATION ============ -->
   <header class="nav" id="nav">
     <a href="#hero" class="nav__brand">Sadaat <span>&amp;</span> Daniya</a>
-    <nav class="nav__links" aria-label="Primary">
+    <button class="nav__toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+      <span class="nav__toggle-bar" aria-hidden="true"></span>
+      <span class="nav__toggle-bar" aria-hidden="true"></span>
+      <span class="nav__toggle-bar" aria-hidden="true"></span>
+    </button>
+    <nav class="nav__links" id="navLinks" aria-label="Primary">
       <a href="#events">Events</a>
       <a href="#countdown">Countdown</a>
       <a href="#dresscode">Attire</a>
       <a href="#venue">Venue</a>
       <a href="#rsvp">RSVP</a>
     </nav>
+    <div class="nav__backdrop" id="navBackdrop" aria-hidden="true"></div>
   </header>
 
   <main>
