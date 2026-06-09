@@ -1,4 +1,3 @@
-# Copyrighted music — add locally, do not push to public repos
-music/*.mp3
+# Optional: ignore other audio formats if not used
 music/*.m4a
 music/*.wav
