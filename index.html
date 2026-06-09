@@ -26,8 +26,10 @@
   <!-- ============ LOADING SCREEN ============ -->
   <div class="loader" id="loader" aria-hidden="true">
     <div class="loader__ring"></div>
-    <div class="loader__badge">S<span>&amp;</span>D</div>
-    <p class="loader__text">Sadaat &amp; Daniya</p>
+    <div class="loader__badge">
+      <span class="royal-shine">S</span><span class="loader__amp">&amp;</span><span class="royal-shine">D</span>
+    </div>
+    <p class="loader__text royal-shine">Sadaat &amp; Daniya</p>
   </div>
 
   <!-- ============ AMBIENT MUSIC ============ -->
@@ -47,18 +49,26 @@
 
     <!-- Camera stage — subtle zoom during reveal -->
     <div class="cinematic-stage" id="cinematicStage">
+      <header class="intro-headline" id="introHeadline">
+        <p class="intro-headline__eyebrow">With the blessings of Allah</p>
+        <h1 class="intro-headline__title">
+          <span class="intro-headline__name royal-shine" data-field="partner1">Sadaat</span>
+          <span class="intro-headline__amp">&amp;</span>
+          <span class="intro-headline__name royal-shine" data-field="partner2">Daniya</span>
+        </h1>
+      </header>
+
       <div class="luxury-envelope" id="luxuryEnvelope" role="button" tabindex="0" aria-label="Tap the wax seal to open the invitation">
 
         <!-- Golden light blooms from the seam as it opens -->
         <div class="env-bloom" id="envBloom" aria-hidden="true"></div>
 
-        <!-- Bottom half — names fully visible when closed -->
+        <!-- Bottom half -->
         <div class="env-gate env-gate--bottom" id="envBottom">
           <div class="env-gate__inner">
             <div class="env-gate__paper" aria-hidden="true"></div>
-            <div class="env-content">
+            <div class="env-content env-content--bottom">
               <p class="env-invite">You are cordially invited</p>
-              <h1 class="env-couple">Sadaat <i>&amp;</i> Daniya</h1>
               <p class="env-date" data-field="date-long">Saturday, July 18, 2026</p>
             </div>
             <div class="env-gate__edge env-gate__edge--top" aria-hidden="true"></div>
@@ -70,9 +80,6 @@
           <div class="env-gate__inner">
             <div class="env-gate__paper" aria-hidden="true"></div>
             <div class="env-floral-band" aria-hidden="true"></div>
-            <div class="env-foil-badge" aria-hidden="true">
-              <span>S</span><em>&amp;</em><span>D</span>
-            </div>
             <div class="env-gate__edge env-gate__edge--bottom" aria-hidden="true"></div>
           </div>
         </div>
@@ -127,9 +134,9 @@
     <div class="intro-names" id="introNames" aria-hidden="true">
       <p class="intro-names__eyebrow">With the blessings of Allah</p>
       <h2 class="intro-names__title">
-        <span class="gold-foil">Sadaat</span>
+        <span class="royal-shine" data-field="partner1">Sadaat</span>
         <span class="intro-names__weds">weds</span>
-        <span class="gold-foil">Daniya</span>
+        <span class="royal-shine" data-field="partner2">Daniya</span>
       </h2>
     </div>
   </div>
@@ -159,7 +166,9 @@
       <div class="hero__oval reveal">
         <div class="hero__inner">
           <p class="hero__eyebrow">With the blessings of Allah</p>
-          <h1 class="hero__names gold-foil">Sadaat<span class="hero__amp">&amp;</span>Daniya</h1>
+          <h1 class="hero__names">
+            <span class="royal-shine" data-field="partner1">Sadaat</span><span class="hero__amp">&amp;</span><span class="royal-shine" data-field="partner2">Daniya</span>
+          </h1>
           <p class="hero__script">are getting married</p>
           <p class="hero__date" data-field="date-long">Saturday, July 18, 2026</p>
         </div>

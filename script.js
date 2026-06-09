@@ -684,6 +684,7 @@ function initAmbientParticles() {
 function initIntro() {
   const intro = document.getElementById("intro");
   const stage = document.getElementById("cinematicStage");
+  const headline = document.getElementById("introHeadline");
   const envelope = document.getElementById("luxuryEnvelope");
   const envTop = document.getElementById("envTop");
   const envBottom = document.getElementById("envBottom");
@@ -971,6 +972,7 @@ function initIntro() {
     tl.to(envelope, { x: 0, duration: 0.55 }, 2.5);
 
     // 5) Envelope splits — both halves open forward toward the viewer
+    if (headline) tl.to(headline, { autoAlpha: 0, y: -16, duration: 0.8, ease: "power2.in" }, 3.0);
     tl.call(() => envelope.classList.add("is-opening", "is-open"), null, 3.1);
     if (envTop && envBottom) {
       gsap.set([envTop, envBottom], { transformPerspective: 1600, transformStyle: "preserve-3d" });
