@@ -17,19 +17,16 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=Parisienne&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=7a9f6a7" />
+  <link rel="stylesheet" href="styles.css?v=713520c2" />
 </head>
 <body class="intro-active">
 
   <!-- ============ LOADING SCREEN ============ -->
   <div class="loader" id="loader" aria-hidden="true">
     <div class="loader__ring"></div>
-    <div class="loader__badge">
-      <span class="royal-shine">S</span><span class="loader__amp">&amp;</span><span class="royal-shine">D</span>
-    </div>
-    <p class="loader__text royal-shine">Sadaat &amp; Daniya</p>
+    <p class="loader__text name-display">Sadaat &amp; Daniya</p>
   </div>
 
   <!-- ============ AMBIENT MUSIC ============ -->
@@ -52,9 +49,9 @@
       <header class="intro-headline" id="introHeadline">
         <p class="intro-headline__eyebrow">With the blessings of Allah</p>
         <h1 class="intro-headline__title">
-          <span class="intro-headline__name royal-shine" data-field="partner1">Sadaat</span>
+          <span class="intro-headline__name name-display" data-field="partner1">Sadaat</span>
           <span class="intro-headline__amp">&amp;</span>
-          <span class="intro-headline__name royal-shine" data-field="partner2">Daniya</span>
+          <span class="intro-headline__name name-display" data-field="partner2">Daniya</span>
         </h1>
       </header>
 
@@ -87,22 +84,13 @@
         <div class="env-seam" aria-hidden="true"></div>
 
         <!-- Photorealistic wax seal (tap target) -->
-        <button class="wax-seal" id="waxSeal" type="button" aria-label="Break the seal to open">
+        <button class="wax-seal" id="waxSeal" type="button" aria-label="Tap the seal to open">
           <span class="wax-seal__glow" aria-hidden="true"></span>
           <img class="wax-seal__img" src="images/wax-seal.png" alt="" />
-          <svg class="wax-seal__cracks" viewBox="0 0 100 100" aria-hidden="true">
-            <path class="crack crack--1" d="M50 50 L30 18" />
-            <path class="crack crack--2" d="M50 50 L72 22" />
-            <path class="crack crack--3" d="M50 50 L82 48" />
-            <path class="crack crack--4" d="M50 50 L68 78" />
-            <path class="crack crack--5" d="M50 50 L32 76" />
-            <path class="crack crack--6" d="M50 50 L18 44" />
-          </svg>
           <span class="wax-seal__sparkle-ring" aria-hidden="true"></span>
         </button>
 
-        <!-- Seal shards (shatter physics) -->
-        <div class="seal-shards" id="sealShards" aria-hidden="true"></div>
+        <div class="seal-hearts" id="sealHearts" aria-hidden="true"></div>
       </div>
 
       <p class="env-hint" id="envHint">Tap the seal</p>
@@ -134,9 +122,9 @@
     <div class="intro-names" id="introNames" aria-hidden="true">
       <p class="intro-names__eyebrow">With the blessings of Allah</p>
       <h2 class="intro-names__title">
-        <span class="royal-shine" data-field="partner1">Sadaat</span>
+        <span class="name-display" data-field="partner1">Sadaat</span>
         <span class="intro-names__weds">weds</span>
-        <span class="royal-shine" data-field="partner2">Daniya</span>
+        <span class="name-display" data-field="partner2">Daniya</span>
       </h2>
     </div>
   </div>
@@ -167,7 +155,7 @@
         <div class="hero__inner">
           <p class="hero__eyebrow">With the blessings of Allah</p>
           <h1 class="hero__names">
-            <span class="royal-shine" data-field="partner1">Sadaat</span><span class="hero__amp">&amp;</span><span class="royal-shine" data-field="partner2">Daniya</span>
+            <span class="name-display" data-field="partner1">Sadaat</span><span class="hero__amp">&amp;</span><span class="name-display" data-field="partner2">Daniya</span>
           </h1>
           <p class="hero__script">are getting married</p>
           <p class="hero__date" data-field="date-long">Saturday, July 18, 2026</p>
@@ -324,6 +312,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
-  <script src="script.js?v=7a9f6a7" defer></script>
+  <script src="script.js?v=713520c2" defer></script>
 </body>
 </html>

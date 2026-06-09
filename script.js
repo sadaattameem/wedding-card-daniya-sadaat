@@ -95,6 +95,28 @@ const BFLY_PALETTE = [
   { fill: "#e7b9c2", edge: "#c98b96" }, // dusty rose
 ];
 let butterflyTextures = [];
+let heartTextures = [];
+
+function buildHeartTextures() {
+  const S = 120;
+  const fills = ["#e7b9c2", "#c98b96", "#f5e2e6", "#a8616f"];
+  return fills.map((fill) => {
+    const c = document.createElement("canvas");
+    c.width = S; c.height = S;
+    const x = c.getContext("2d");
+    const cx = S / 2, cy = S / 2 + 6, s = 16;
+    x.fillStyle = fill;
+    x.beginPath();
+    x.moveTo(cx, cy + s * 0.35);
+    x.bezierCurveTo(cx, cy - s * 0.45, cx - s * 1.1, cy - s * 0.45, cx - s * 1.1, cy + s * 0.15);
+    x.bezierCurveTo(cx - s * 1.1, cy + s * 0.85, cx, cy + s * 1.25, cx, cy + s * 1.65);
+    x.bezierCurveTo(cx, cy + s * 1.25, cx + s * 1.1, cy + s * 0.85, cx + s * 1.1, cy + s * 0.15);
+    x.bezierCurveTo(cx + s * 1.1, cy - s * 0.45, cx, cy - s * 0.45, cx, cy + s * 0.35);
+    x.closePath();
+    x.fill();
+    return { canvas: c, size: S };
+  });
+}
 
 function buildButterflyTextures() {
   const S = 150;
@@ -690,7 +712,7 @@ function initIntro() {
   const envBottom = document.getElementById("envBottom");
   const envBloom = document.getElementById("envBloom");
   const seal = document.getElementById("waxSeal");
-  const shards = document.getElementById("sealShards");
+  const sealHearts = document.getElementById("sealHearts");
   const hint = document.getElementById("envHint");
   const curtains = document.getElementById("curtains");
   const canvas = document.getElementById("introCanvas");
@@ -743,13 +765,19 @@ function initIntro() {
         tx = rand(0.03, 0.97) * W; ty = rand(0.05, 0.95) * H;
       }
       const depth = rand(0.45, 1);
+      const isHeart = Math.random() < 0.3;
       const p = {
         x: cx + rand(-26, 26), y: cy + rand(-18, 18), tx, ty, isOval, depth,
-        size: (isOval ? rand(26, 44) : rand(18, 50)) * (0.65 + 0.35 * depth),
+        kind: isHeart ? "heart" : "butterfly",
+        size: (isOval ? rand(26, 44) : rand(18, 50)) * (0.65 + 0.35 * depth) * (isHeart ? 0.78 : 1),
         alpha: 0.45 + 0.55 * depth,
         rot: rand(-0.5, 0.5), rotSpeed: rand(-0.7, 0.7),
         flap: Math.random() * Math.PI * 2, flapSpeed: rand(9, 16) * (0.8 + 0.4 * depth),
-        tex: (Math.random() * butterflyTextures.length) | 0,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: rand(2, 5),
+        tex: isHeart
+          ? (Math.random() * heartTextures.length) | 0
+          : (Math.random() * butterflyTextures.length) | 0,
         driftA: Math.random() * Math.PI * 2,
         driftR: (isOval ? rand(5, 12) : rand(10, 26)) * depth,
         driftS: rand(0.5, 1.2), bvx: 0, bvy: 0, dvx: 0, dvy: 0,
@@ -797,6 +825,22 @@ function initIntro() {
     ctx.restore();
   }
 
+  function drawHeart(p) {
+    const tex = heartTextures[p.tex];
+    if (!tex) return;
+    const pulse = 0.86 + 0.14 * Math.sin(p.pulse);
+    ctx.save();
+    ctx.globalAlpha = canvasAlpha * p.alpha;
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(pulse, pulse);
+    ctx.drawImage(tex.canvas, -p.size / 2, -p.size / 2, p.size, p.size);
+    ctx.restore();
+  }
+
+  function drawParticle(p) {
+    if (p.kind === "heart") drawHeart(p);
+    else drawButterfly(p);
+  }
+
   function frame(now) {
     if (!startTime) startTime = now;
     const t = now - startTime;
@@ -832,7 +876,8 @@ function initIntro() {
     }
 
     for (const p of particles) {
-      p.flap += p.flapSpeed * dt;
+      if (p.kind === "heart") p.pulse += p.pulseSpeed * dt;
+      else p.flap += p.flapSpeed * dt;
       if (t < T_BURST) {
         p.x += p.bvx; p.y += p.bvy; p.bvx *= 0.93; p.bvy *= 0.93;
         p.rot += p.rotSpeed * dt;
@@ -846,7 +891,7 @@ function initIntro() {
       } else {
         p.x += p.dvx; p.y += p.dvy; p.dvy += 0.05; p.rot += p.rotSpeed * dt;
       }
-      drawButterfly(p);
+      drawParticle(p);
     }
     ctx.globalAlpha = 1;
     if (dispersed) canvasAlpha = Math.max(0, canvasAlpha - 0.01);
@@ -895,41 +940,32 @@ function initIntro() {
     }, T_FINISH + 1400);
   }
 
-  function spawnSealShards() {
-    if (!shards || !seal) return;
-    shards.innerHTML = "";
-    const offsets = [
-      { x: -28, y: -22, r: -35, clip: "polygon(0 0, 100% 0, 50% 100%)" },
-      { x: 30, y: -18, r: 40, clip: "polygon(0 0, 100% 50%, 0 100%)" },
-      { x: 24, y: 26, r: 55, clip: "polygon(100% 0, 100% 100%, 0 50%)" },
-      { x: -26, y: 24, r: -50, clip: "polygon(0 0, 100% 100%, 0 100%)" },
-      { x: 0, y: -34, r: 12, clip: "polygon(50% 0, 100% 100%, 0 100%)" },
-      { x: -12, y: 8, r: -20, clip: "polygon(0 0, 100% 0, 100% 100%)" },
-      { x: 14, y: 6, r: 28, clip: "polygon(0 0, 100% 50%, 50% 100%)" },
-      { x: 0, y: 30, r: -8, clip: "polygon(0 0, 100% 0, 50% 100%)" },
-    ];
-    offsets.forEach((o, i) => {
+  function spawnSealHearts() {
+    if (!sealHearts) return;
+    sealHearts.innerHTML = "";
+    const count = 8;
+    for (let i = 0; i < count; i++) {
       const el = document.createElement("span");
-      el.className = "seal-shard";
-      el.style.clipPath = o.clip;
-      el.style.backgroundPosition = `${50 + (i % 3) * 8}% ${50 + (i % 2) * 10}%`;
-      shards.appendChild(el);
+      el.className = "seal-heart";
+      el.textContent = "\u2665";
+      sealHearts.appendChild(el);
+      const ang = (i / count) * Math.PI * 2;
+      const dist = rand(36, 58);
+      const tx = Math.cos(ang) * dist;
+      const ty = Math.sin(ang) * dist - rand(8, 18);
       if (window.gsap) {
-        gsap.set(el, { x: 0, y: 0, rotation: 0, opacity: 0 });
+        gsap.set(el, { x: 0, y: 0, scale: 0.2, opacity: 0, rotation: rand(-20, 20) });
         gsap.to(el, {
-          opacity: 1, x: o.x * 2.2, y: o.y * 2.2, rotation: o.r,
-          duration: 0.9, delay: 0.05 * i, ease: "power3.out",
-          onStart: () => el.classList.add("is-flying"),
+          x: tx, y: ty, scale: 1, opacity: 1, rotation: rand(-15, 15),
+          duration: 1.1, delay: i * 0.06, ease: "power2.out",
         });
-        gsap.to(el, { opacity: 0, y: o.y * 2.2 + 40, duration: 0.6, delay: 0.7 + i * 0.04, ease: "power2.in" });
+        gsap.to(el, { opacity: 0, scale: 0.4, y: ty + 24, duration: 0.7, delay: 1.0 + i * 0.05, ease: "power1.in" });
       } else {
-        el.classList.add("is-flying");
-        el.style.transform = `translate(calc(-50% + ${o.x * 2}px), calc(-50% + ${o.y * 2}px)) rotate(${o.r}deg)`;
-        el.style.opacity = "0";
-        setTimeout(() => { el.style.opacity = "1"; }, i * 50);
-        setTimeout(() => { el.style.opacity = "0"; }, 900 + i * 40);
+        el.style.opacity = "1";
+        el.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
+        setTimeout(() => { el.style.opacity = "0"; }, 1200);
       }
-    });
+    }
   }
 
   function runCinematicTimeline() {
@@ -938,8 +974,8 @@ function initIntro() {
     startMusic();
 
     if (reducedMotion || !window.gsap) {
-      if (seal) { seal.classList.add("is-glowing", "is-cracking", "is-shattered"); }
-      envelope.classList.add("is-shaking", "is-opening", "is-open", "is-gone");
+      if (seal) { seal.classList.add("is-glowing", "is-opening"); }
+      envelope.classList.add("is-pulsing", "is-opening", "is-open", "is-gone");
       if (curtains) curtains.classList.add("is-visible", "is-open", "is-blazing");
       if (names) names.classList.add("show");
       CinematicAudio.swellMusic(0.38, 1.5);
@@ -949,68 +985,63 @@ function initIntro() {
 
     const tl = gsap.timeline({ defaults: { ease: "power2.inOut" } });
 
-    // 1) Seal glows with golden light
+    // 1) Seal glows warmly
     tl.call(() => seal.classList.add("is-glowing"), null, 0);
-    tl.to(".wax-seal__glow", { scale: 1.15, duration: 1.2, ease: "sine.inOut", repeat: 1, yoyo: true }, 0);
+    tl.to(".wax-seal__glow", { scale: 1.2, duration: 1.4, ease: "sine.inOut", repeat: 1, yoyo: true }, 0);
 
-    // 2) Cracks spread in slow motion
-    tl.call(() => seal.classList.add("is-cracking"), null, 0.6);
-    tl.to(".wax-seal__cracks .crack", {
-      strokeDashoffset: 0, opacity: 1, duration: 1.1, stagger: 0.12, ease: "power1.out",
-    }, 0.7);
-
-    // 3) Seal shatters + crack SFX
+    // 2) Seal lifts and fades — positive reveal
+    tl.call(() => seal.classList.add("is-opening"), null, 1.4);
+    tl.to(seal, {
+      y: -28, scale: 1.12, opacity: 0, duration: 1.3, ease: "power2.out",
+    }, 1.4);
     tl.call(() => {
-      CinematicAudio.playCrack();
-      CinematicAudio.swellMusic(0.2, 1.8);
-      seal.classList.add("is-shattered");
-      spawnSealShards();
-    }, null, 2.0);
+      spawnSealHearts();
+      CinematicAudio.swellMusic(0.2, 1.6);
+    }, null, 1.7);
 
-    // 4) Envelope vibrates — magic waiting inside
-    tl.call(() => envelope.classList.add("is-shaking"), null, 2.5);
-    tl.to(envelope, { x: 0, duration: 0.55 }, 2.5);
+    // 3) Envelope gentle pulse
+    tl.call(() => envelope.classList.add("is-pulsing"), null, 2.2);
 
-    // 5) Envelope splits — both halves open forward toward the viewer
-    if (headline) tl.to(headline, { autoAlpha: 0, y: -16, duration: 0.8, ease: "power2.in" }, 3.0);
-    tl.call(() => envelope.classList.add("is-opening", "is-open"), null, 3.1);
+    // 4) Envelope splits — both halves open forward toward the viewer
+    if (headline) tl.to(headline, { autoAlpha: 0, y: -16, duration: 0.8, ease: "power2.in" }, 2.5);
+    tl.call(() => envelope.classList.add("is-opening", "is-open"), null, 2.6);
     if (envTop && envBottom) {
       gsap.set([envTop, envBottom], { transformPerspective: 1600, transformStyle: "preserve-3d" });
       tl.to(envTop, {
         rotateX: 92, y: "-4%", z: 56, duration: 2.2, ease: "power3.out",
         transformOrigin: "bottom center",
-      }, 3.15);
+      }, 2.7);
       tl.to(envBottom, {
         rotateX: -96, y: "4%", z: 56, duration: 2.2, ease: "power3.out",
         transformOrigin: "top center",
-      }, 3.15);
+      }, 2.7);
     } else {
-      tl.call(() => envelope.classList.add("is-open"), null, 3.2);
+      tl.call(() => envelope.classList.add("is-open"), null, 2.7);
     }
     if (envBloom) {
-      tl.to(envBloom, { scale: 1.2, opacity: 1, duration: 2, ease: "power2.out" }, 3.4);
+      tl.to(envBloom, { scale: 1.2, opacity: 1, duration: 2, ease: "power2.out" }, 2.9);
     }
-    tl.to(stage, { scale: isMobile ? 1.04 : 1.1, z: 30, duration: 2.8, ease: "power2.out" }, 3.1);
-    tl.call(() => CinematicAudio.swellMusic(0.28, 2.4), null, 3.4);
+    tl.to(stage, { scale: isMobile ? 1.04 : 1.1, z: 30, duration: 2.8, ease: "power2.out" }, 2.6);
+    tl.call(() => CinematicAudio.swellMusic(0.28, 2.4), null, 2.9);
 
-    // 6) Golden burst from envelope interior
-    tl.call(() => startBurstFX(), null, 4.0);
+    // 5) Golden burst from envelope interior
+    tl.call(() => startBurstFX(), null, 3.4);
 
-    // 7) Envelope fades — royal curtains appear
+    // 6) Envelope fades — royal curtains appear
     tl.call(() => {
       envelope.classList.add("is-gone");
       if (curtains) curtains.classList.add("is-visible");
-    }, null, 4.6);
+    }, null, 4.0);
 
-    // 8) Curtains part — cinematic trailer moment
+    // 7) Curtains part — cinematic trailer moment
     tl.call(() => {
       if (curtains) curtains.classList.add("is-open", "is-blazing");
       CinematicAudio.playWhoosh();
       CinematicAudio.swellMusic(0.42, 2.8);
-    }, null, 5.4);
+    }, null, 4.8);
 
-    // 9) Butterfly swarm + names reveal
-    tl.call(runCanvasIntro, null, 6.0);
+    // 8) Butterfly + heart swarm + names reveal
+    tl.call(runCanvasIntro, null, 5.4);
   }
 
   let opened = false;
@@ -1039,6 +1070,7 @@ function initIntro() {
    ============================================================ */
 document.addEventListener("DOMContentLoaded", () => {
   butterflyTextures = buildButterflyTextures();
+  heartTextures = buildHeartTextures();
   applyConfig();
   initLoader();
   initIntro();
