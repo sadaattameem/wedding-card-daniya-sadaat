@@ -43,9 +43,9 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 function butterflyCount() {
   const area = window.innerWidth * window.innerHeight;
-  if (isNarrow) return Math.max(70, Math.min(140, Math.round(area / 7500)));
-  if (isMobile) return Math.max(100, Math.min(220, Math.round(area / 5800)));
-  return Math.max(200, Math.min(400, Math.round(area / 4400)));
+  if (isNarrow) return Math.max(85, Math.min(160, Math.round(area / 6500)));
+  if (isMobile) return Math.max(120, Math.min(260, Math.round(area / 5000)));
+  return Math.max(240, Math.min(460, Math.round(area / 3800)));
 }
 
 function withGSAP(fn) {
@@ -88,11 +88,11 @@ function applyConfig() {
    Butterfly textures (procedural, luxury palette)
    ============================================================ */
 const BFLY_PALETTE = [
-  { fill: "#ffffff", edge: "#f0debf" }, // pearl white + gold edge
-  { fill: "#f4cfd8", edge: "#e7b9c2" }, // soft blush
-  { fill: "#ecd6a3", edge: "#cfae6a" }, // champagne gold
-  { fill: "#f5ecd9", edge: "#e6d2a2" }, // ivory
+  { fill: "#faf6f0", edge: "#e8ddd0" }, // soft ivory
+  { fill: "#f4cfd8", edge: "#d4a8b2" }, // blush
+  { fill: "#c8d4bc", edge: "#a8b89a" }, // sage
   { fill: "#e7b9c2", edge: "#c98b96" }, // dusty rose
+  { fill: "#ddd0e4", edge: "#b8a8c8" }, // soft lavender
 ];
 let butterflyTextures = [];
 let heartTextures = [];
@@ -130,13 +130,9 @@ function buildButterflyTextures() {
       x.save();
       x.translate(cx + dx, cy + dy);
       x.rotate(rot);
-      const g = x.createRadialGradient(0, 0, 2, 0, 0, w);
-      g.addColorStop(0, "rgba(255,255,255,0.95)");
-      g.addColorStop(0.5, pal.fill);
-      g.addColorStop(1, pal.edge);
-      x.fillStyle = g;
-      x.strokeStyle = "rgba(184,146,63,0.45)";
-      x.lineWidth = 1.4;
+      x.fillStyle = pal.fill;
+      x.strokeStyle = pal.edge;
+      x.lineWidth = 1.1;
       x.beginPath();
       x.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
       x.fill();
@@ -151,12 +147,12 @@ function buildButterflyTextures() {
     wing(20, 18, 19, 15, -0.6);
 
     // body
-    x.fillStyle = "#6a4a3a";
+    x.fillStyle = "#8a6a72";
     x.beginPath();
     x.ellipse(cx, cy, 3.4, 24, 0, 0, Math.PI * 2);
     x.fill();
     // antennae
-    x.strokeStyle = "#6a4a3a"; x.lineWidth = 1.4;
+    x.strokeStyle = "#8a6a72"; x.lineWidth = 1.2;
     x.beginPath();
     x.moveTo(cx, cy - 20); x.quadraticCurveTo(cx - 9, cy - 34, cx - 13, cy - 30);
     x.moveTo(cx, cy - 20); x.quadraticCurveTo(cx + 9, cy - 34, cx + 13, cy - 30);
@@ -256,61 +252,79 @@ function revealHero() {
    ============================================================ */
 let scrollPromptShown = false;
 let scrollPromptDismissed = false;
+let scrollPromptListenersBound = false;
+
+function dismissScrollPrompt() {
+  if (scrollPromptDismissed) return;
+  scrollPromptDismissed = true;
+  const prompt = document.getElementById("scrollPrompt");
+  if (!prompt) return;
+
+  const hide = () => {
+    prompt.classList.add("is-dismissed");
+    prompt.classList.remove("is-visible");
+    prompt.setAttribute("aria-hidden", "true");
+    prompt.style.display = "none";
+  };
+
+  if (window.gsap) gsap.killTweensOf(prompt);
+  if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    gsap.to(prompt, { autoAlpha: 0, y: 14, duration: 0.3, ease: "power2.in", onComplete: hide });
+  } else {
+    hide();
+  }
+
+  window.removeEventListener("scroll", onScrollDismiss, { passive: true });
+  window.removeEventListener("wheel", onWheelDismiss, { passive: true });
+  window.removeEventListener("touchstart", onTouchDismiss, { passive: true });
+  window.removeEventListener("touchmove", onTouchDismiss, { passive: true });
+}
+
+function onScrollDismiss() {
+  if (window.scrollY > 0) dismissScrollPrompt();
+}
+
+function onWheelDismiss(e) {
+  if (Math.abs(e.deltaY) > 0) dismissScrollPrompt();
+}
+
+let touchDismissStartY = 0;
+function onTouchDismiss(e) {
+  if (e.type === "touchstart") {
+    touchDismissStartY = e.touches[0].clientY;
+    return;
+  }
+  if (Math.abs(touchDismissStartY - e.touches[0].clientY) > 8) dismissScrollPrompt();
+}
 
 function showScrollPrompt() {
   if (scrollPromptShown || scrollPromptDismissed) return;
   const prompt = document.getElementById("scrollPrompt");
   if (!prompt) return;
 
-  const reveal = () => {
-    scrollPromptShown = true;
-    prompt.setAttribute("aria-hidden", "false");
-    prompt.classList.add("is-visible");
-    if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      gsap.fromTo(prompt,
-        { y: 24, autoAlpha: 0 },
-        { y: 0, autoAlpha: 1, duration: 0.9, ease: "back.out(1.4)" }
-      );
-    }
-  };
-
-  setTimeout(reveal, 1200);
+  scrollPromptShown = true;
+  prompt.style.display = "";
+  prompt.setAttribute("aria-hidden", "false");
+  prompt.classList.add("is-visible");
+  if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    gsap.fromTo(prompt,
+      { y: 18, autoAlpha: 0 },
+      { y: 0, autoAlpha: 1, duration: 0.75, ease: "back.out(1.3)" }
+    );
+  }
 }
 
 function initScrollPrompt() {
   const prompt = document.getElementById("scrollPrompt");
-  if (!prompt) return;
+  if (!prompt || scrollPromptListenersBound) return;
+  scrollPromptListenersBound = true;
 
-  function dismiss() {
-    if (scrollPromptDismissed) return;
-    scrollPromptDismissed = true;
-    prompt.classList.add("is-dismissed");
-    prompt.classList.remove("is-visible");
-    prompt.setAttribute("aria-hidden", "true");
-    window.removeEventListener("scroll", onScroll);
-    window.removeEventListener("touchmove", onTouch);
-  }
+  window.addEventListener("scroll", onScrollDismiss, { passive: true });
+  window.addEventListener("wheel", onWheelDismiss, { passive: true });
+  window.addEventListener("touchstart", onTouchDismiss, { passive: true });
+  window.addEventListener("touchmove", onTouchDismiss, { passive: true });
 
-  function onScroll() {
-    if (window.scrollY > 40) dismiss();
-  }
-
-  let touchStartY = 0;
-  function onTouch(e) {
-    if (e.type === "touchstart") {
-      touchStartY = e.touches[0].clientY;
-      return;
-    }
-    if (Math.abs(touchStartY - e.touches[0].clientY) > 30) dismiss();
-  }
-
-  window.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("touchstart", onTouch, { passive: true });
-  window.addEventListener("touchmove", onTouch, { passive: true });
-
-  prompt.querySelector(".scroll-cue")?.addEventListener("click", () => {
-    setTimeout(dismiss, 400);
-  });
+  prompt.querySelector(".scroll-cue")?.addEventListener("click", dismissScrollPrompt);
 }
 
 /* ============================================================
@@ -319,24 +333,26 @@ function initScrollPrompt() {
 function fitHeroContent() {
   const oval = document.querySelector(".hero__oval");
   const inner = document.querySelector(".hero__inner");
-  if (!oval || !inner) return;
+  const names = document.querySelector(".hero__names");
+  if (!oval || !inner || !names) return;
 
   function fit() {
-    const maxH = oval.clientHeight * 0.72;
-    const innerH = inner.scrollHeight;
-    if (innerH > maxH && maxH > 0) {
-      const scale = Math.max(0.78, maxH / innerH);
-      inner.style.setProperty("--hero-scale", scale.toFixed(3));
-    } else {
-      inner.style.setProperty("--hero-scale", "1");
-    }
+    const maxH = oval.clientHeight * 0.58;
+    const maxW = oval.clientWidth * 0.4;
+    const innerH = names.scrollHeight;
+    const innerW = names.scrollWidth;
+    let scale = 1;
+    if (maxH > 0 && innerH > maxH) scale = Math.min(scale, maxH / innerH);
+    if (maxW > 0 && innerW > maxW) scale = Math.min(scale, maxW / innerW);
+    scale = Math.max(0.72, Math.min(1, scale));
+    inner.style.setProperty("--hero-scale", scale < 0.99 ? scale.toFixed(3) : "1");
   }
 
   fit();
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(fit);
     ro.observe(oval);
-    ro.observe(inner);
+    ro.observe(names);
   } else {
     window.addEventListener("resize", fit);
   }
@@ -688,7 +704,7 @@ function initRSVP() {
       status.classList.add("is-success");
       status.textContent = data.attending === "no"
         ? "Thank you for letting us know — you will be dearly missed."
-        : "Thank you! We can't wait to celebrate with you, In Sha Allah.";
+        : "Thank you! We can't wait to celebrate with you, InshaAllah.";
       if (data.attending !== "no") flyButterfliesAcross();
       form.reset();
       attending.value = "";
@@ -817,14 +833,18 @@ function initIntro() {
   const names = document.getElementById("introNames");
   const body = document.body;
 
-  if (!intro || !envelope) { body.classList.remove("intro-active"); return; }
+  if (!intro || !envelope) {
+    body.classList.remove("intro-active");
+    revealHero();
+    return;
+  }
 
   const ctx = canvas && canvas.getContext ? canvas.getContext("2d") : null;
   let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, A = 0, B = 0;
-  let particles = [], sparks = [], goldDust = [];
+  let particles = [];
   let raf = 0, startTime = 0, dispersed = false, canvasAlpha = 1;
 
-  const T_BURST = 900, T_ARRANGE = 3000, T_NAMES = 3200, T_DISPERSE = 7000, T_FINISH = 9200;
+  const T_BURST = 650, T_ARRANGE = 2400, T_NAMES = 2200, T_DISPERSE = 7500, T_FINISH = 9800;
 
   function finish() {
     intro.classList.add("is-done");
@@ -845,70 +865,106 @@ function initIntro() {
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     cx = W / 2; cy = H * 0.44;
-    A = Math.min(W * 0.32, 360); B = Math.min(H * 0.30, 300);
+    A = Math.min(W * 0.38, 420); B = Math.min(H * 0.36, 360);
   }
 
+  const OVAL_RINGS = [
+    { aScale: 0.88, bScale: 0.88, weight: 0.32 },
+    { aScale: 1.0, bScale: 1.0, weight: 0.44 },
+    { aScale: 1.14, bScale: 1.1, weight: 0.24 },
+  ];
+
   function makeParticles(count) {
-    const ovalCount = Math.round(count * 0.55);
+    const ovalCount = Math.round(count * 0.94);
     particles = [];
-    for (let i = 0; i < count; i++) {
-      const isOval = i < ovalCount;
-      let tx, ty;
-      if (isOval) {
-        const ring = i % 3;
-        const ang = (i / ovalCount) * Math.PI * 2;
-        tx = cx + Math.cos(ang) * (A * (1 + ring * 0.13) + rand(-12, 12));
-        ty = cy + Math.sin(ang) * (B * (1 + ring * 0.13) + rand(-12, 12));
-      } else {
-        tx = rand(0.03, 0.97) * W; ty = rand(0.05, 0.95) * H;
+    let ovalIdx = 0;
+
+    for (const ring of OVAL_RINGS) {
+      const ringCount = Math.max(1, Math.round(ovalCount * ring.weight));
+      for (let j = 0; j < ringCount && ovalIdx < ovalCount; j++, ovalIdx++) {
+        const ang = (j / ringCount) * Math.PI * 2 + ring.aScale * 0.12;
+        const tx = cx + Math.cos(ang) * (A * ring.aScale + rand(-6, 6));
+        const ty = cy + Math.sin(ang) * (B * ring.bScale + rand(-5, 5));
+        const depth = rand(0.65, 1);
+        const isHeart = Math.random() < 0.12;
+        const p = {
+          x: cx + rand(-14, 14), y: cy + rand(-10, 10), tx, ty,
+          isOval: true, depth, ang,
+          kind: isHeart ? "heart" : "butterfly",
+          size: rand(28, 46) * (0.72 + 0.28 * depth) * (isHeart ? 0.82 : 1),
+          alpha: 0.62 + 0.38 * depth,
+          rot: ang + Math.PI / 2 + rand(-0.2, 0.2),
+          targetRot: ang + Math.PI / 2 + rand(-0.15, 0.15),
+          rotSpeed: rand(-0.35, 0.35),
+          flap: Math.random() * Math.PI * 2,
+          flapSpeed: rand(8, 14) * (0.85 + 0.35 * depth),
+          pulse: Math.random() * Math.PI * 2,
+          pulseSpeed: rand(2, 4),
+          tex: isHeart
+            ? (Math.random() * heartTextures.length) | 0
+            : (Math.random() * butterflyTextures.length) | 0,
+          driftA: ang + rand(-0.4, 0.4),
+          driftR: rand(4, 10) * depth,
+          driftS: rand(0.45, 0.95),
+          bvx: 0, bvy: 0, dvx: 0, dvy: 0,
+        };
+        const a = Math.atan2(ty - cy, tx - cx) + rand(-0.15, 0.15);
+        const spd = rand(14, 26) * (0.8 + 0.4 * depth);
+        p.bvx = Math.cos(a) * spd; p.bvy = Math.sin(a) * spd;
+        particles.push(p);
       }
-      const depth = rand(0.45, 1);
-      const isHeart = Math.random() < 0.3;
-      const p = {
-        x: cx + rand(-26, 26), y: cy + rand(-18, 18), tx, ty, isOval, depth,
-        kind: isHeart ? "heart" : "butterfly",
-        size: (isOval ? rand(26, 44) : rand(18, 50)) * (0.65 + 0.35 * depth) * (isHeart ? 0.78 : 1),
-        alpha: 0.45 + 0.55 * depth,
-        rot: rand(-0.5, 0.5), rotSpeed: rand(-0.7, 0.7),
-        flap: Math.random() * Math.PI * 2, flapSpeed: rand(9, 16) * (0.8 + 0.4 * depth),
-        pulse: Math.random() * Math.PI * 2,
-        pulseSpeed: rand(2, 5),
-        tex: isHeart
-          ? (Math.random() * heartTextures.length) | 0
-          : (Math.random() * butterflyTextures.length) | 0,
-        driftA: Math.random() * Math.PI * 2,
-        driftR: (isOval ? rand(5, 12) : rand(10, 26)) * depth,
-        driftS: rand(0.5, 1.2), bvx: 0, bvy: 0, dvx: 0, dvy: 0,
-      };
-      const a = Math.atan2(p.y - cy, p.x - cx) + rand(-0.5, 0.5);
-      const spd = rand(8, 18) * (0.7 + 0.5 * depth);
-      p.bvx = Math.cos(a) * spd; p.bvy = Math.sin(a) * spd;
-      particles.push(p);
     }
+
+    for (let i = ovalIdx; i < count; i++) {
+      const ang = rand(0, Math.PI * 2);
+      const dist = rand(1.22, 1.55);
+      const tx = cx + Math.cos(ang) * A * dist;
+      const ty = cy + Math.sin(ang) * B * dist;
+      const depth = rand(0.35, 0.6);
+      particles.push({
+        x: cx + rand(-20, 20), y: cy + rand(-14, 14), tx, ty,
+        isOval: false, depth, ang,
+        kind: "butterfly",
+        size: rand(16, 28) * depth,
+        alpha: 0.28 + 0.22 * depth,
+        rot: rand(-0.5, 0.5), targetRot: ang + Math.PI / 2,
+        rotSpeed: rand(-0.5, 0.5),
+        flap: Math.random() * Math.PI * 2,
+        flapSpeed: rand(7, 12),
+        pulse: 0, pulseSpeed: 0,
+        tex: (Math.random() * butterflyTextures.length) | 0,
+        driftA: Math.random() * Math.PI * 2,
+        driftR: rand(14, 28) * depth,
+        driftS: rand(0.35, 0.75),
+        bvx: Math.cos(ang) * rand(10, 18),
+        bvy: Math.sin(ang) * rand(10, 18),
+        dvx: 0, dvy: 0,
+      });
+    }
+
     particles.sort((m, n) => m.depth - n.depth);
   }
 
-  function makeSparks(n) {
-    sparks = [];
-    for (let i = 0; i < n; i++) {
-      const a = rand(0, Math.PI * 2), spd = rand(2, 11);
-      sparks.push({
-        x: cx + rand(-30, 30), y: cy + rand(-20, 20),
-        vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - rand(0, 4),
-        r: rand(1.5, 5), life: 1, decay: rand(0.006, 0.018),
-        color: Math.random() < 0.6 ? "#fff4d6" : "#ffffff",
-      });
-    }
-  }
+  function drawPastelWash(t) {
+    const bloom = Math.min(1, t / 1200);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(A, B) * 1.45);
+    g.addColorStop(0, `rgba(255, 252, 248, ${0.55 + 0.4 * bloom})`);
+    g.addColorStop(0.38, `rgba(245, 226, 230, ${0.28 + 0.22 * bloom})`);
+    g.addColorStop(0.68, `rgba(251, 247, 240, ${0.12 + 0.1 * bloom})`);
+    g.addColorStop(1, "rgba(253, 249, 242, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
 
-  function makeGoldDust(n) {
-    goldDust = [];
-    for (let i = 0; i < n; i++) {
-      const a = rand(0, Math.PI * 2), spd = rand(3, 14);
-      goldDust.push({
-        x: cx, y: cy, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - rand(2, 6),
-        r: rand(1, 3), life: 1, decay: rand(0.004, 0.012),
-      });
+    if (t >= T_BURST * 0.4 && !dispersed) {
+      const ringAlpha = canvasAlpha * Math.min(1, (t - T_BURST * 0.4) / 1400) * 0.22;
+      ctx.save();
+      ctx.globalAlpha = ringAlpha;
+      ctx.strokeStyle = "rgba(231, 185, 194, 0.55)";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, A * 1.02, B * 1.02, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -944,48 +1000,24 @@ function initIntro() {
     const t = now - startTime;
     const dt = 1 / 60;
     ctx.clearRect(0, 0, W, H);
-
-    if (goldDust.length) {
-      ctx.save(); ctx.globalCompositeOperation = "lighter";
-      for (const g of goldDust) {
-        g.x += g.vx; g.y += g.vy; g.vy += 0.06; g.life -= g.decay;
-        if (g.life <= 0) continue;
-        ctx.globalAlpha = g.life * canvasAlpha;
-        ctx.fillStyle = "#ffd878";
-        ctx.beginPath(); ctx.arc(g.x, g.y, g.r * 2, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
-      goldDust = goldDust.filter((g) => g.life > 0);
-    }
-
-    if (sparks.length) {
-      ctx.save(); ctx.globalCompositeOperation = "lighter";
-      for (const s of sparks) {
-        s.x += s.vx; s.y += s.vy; s.vy += 0.04; s.life -= s.decay;
-        if (s.life <= 0) continue;
-        ctx.globalAlpha = Math.max(0, s.life) * canvasAlpha;
-        const grd = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 3);
-        grd.addColorStop(0, s.color); grd.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = grd;
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
-      sparks = sparks.filter((s) => s.life > 0);
-    }
+    drawPastelWash(t);
 
     for (const p of particles) {
       if (p.kind === "heart") p.pulse += p.pulseSpeed * dt;
       else p.flap += p.flapSpeed * dt;
       if (t < T_BURST) {
-        p.x += p.bvx; p.y += p.bvy; p.bvx *= 0.93; p.bvy *= 0.93;
+        p.x += p.bvx; p.y += p.bvy; p.bvx *= 0.91; p.bvy *= 0.91;
         p.rot += p.rotSpeed * dt;
       } else if (!dispersed) {
         const arranged = t >= T_ARRANGE;
+        const snap = p.isOval ? 0.09 : 0.045;
         const dox = arranged ? Math.cos(p.driftA + t * 0.001 * p.driftS) * p.driftR : 0;
         const doy = arranged ? Math.sin(p.driftA + t * 0.0013 * p.driftS) * p.driftR : 0;
-        p.x += (p.tx + dox - p.x) * 0.055;
-        p.y += (p.ty + doy - p.y) * 0.055;
-        p.rot += (Math.sin(p.flap * 0.08) * 0.18 - p.rot) * 0.04;
+        p.x += (p.tx + dox - p.x) * snap;
+        p.y += (p.ty + doy - p.y) * snap;
+        const flutter = p.isOval ? Math.sin(p.flap * 0.08) * 0.12 : Math.sin(p.flap * 0.08) * 0.18;
+        const goal = (p.targetRot ?? p.rot) + flutter;
+        p.rot += (goal - p.rot) * (p.isOval ? 0.07 : 0.04);
       } else {
         p.x += p.dvx; p.y += p.dvy; p.dvy += 0.05; p.rot += p.rotSpeed * dt;
       }
@@ -998,30 +1030,18 @@ function initIntro() {
 
   const onResize = () => resize();
 
-  function startBurstFX() {
-    if (!ctx) return;
-    resize();
-    window.addEventListener("resize", onResize);
-    makeGoldDust(isNarrow ? 45 : isMobile ? 60 : 90);
-    makeSparks(isNarrow ? 55 : isMobile ? 75 : 110);
-    if (!raf) {
-      startTime = performance.now();
-      raf = requestAnimationFrame(frame);
-    }
-  }
-
   function runCanvasIntro() {
     if (!ctx) { setTimeout(finish, 1400); return; }
     resize();
-    if (!raf) window.addEventListener("resize", onResize);
+    dispersed = false;
+    canvasAlpha = 1;
+    startTime = 0;
+    window.addEventListener("resize", onResize);
     const count = butterflyCount();
     makeParticles(count);
-    makeSparks(60);
-    makeGoldDust(40);
-    if (!raf) {
-      startTime = performance.now();
-      raf = requestAnimationFrame(frame);
-    }
+    if (raf) cancelAnimationFrame(raf);
+    startTime = performance.now();
+    raf = requestAnimationFrame(frame);
     setTimeout(() => { if (names) names.classList.add("show"); }, T_NAMES);
     setTimeout(() => {
       dispersed = true;
@@ -1075,11 +1095,11 @@ function initIntro() {
       if (seal) { seal.classList.add("is-glowing", "is-opening"); }
       envelope.classList.add("is-pulsing", "is-opening", "is-open", "is-gone");
       if (curtains) {
-        curtains.classList.add("is-visible", "is-spotlit", "is-valance-down", "is-open", "is-blazing");
+        curtains.classList.add("is-visible", "is-spotlit", "is-valance-down", "is-open", "is-blooming");
       }
       if (names) names.classList.add("show");
       CinematicAudio.swellMusic(0.38, 1.5);
-      setTimeout(runCanvasIntro, 400);
+      setTimeout(runCanvasIntro, 300);
       return;
     }
 
@@ -1124,10 +1144,7 @@ function initIntro() {
     tl.to(stage, { scale: isMobile ? 1.04 : 1.1, z: 30, duration: 2.8, ease: "power2.out" }, 2.6);
     tl.call(() => CinematicAudio.swellMusic(0.28, 2.4), null, 2.9);
 
-    // 5) Golden burst from envelope interior
-    tl.call(() => startBurstFX(), null, 3.4);
-
-    // 6) Envelope fades — grand curtains rise into view
+    // 5) Envelope fades — grand curtains rise into view
     tl.call(() => {
       envelope.classList.add("is-gone");
       if (curtains) curtains.classList.add("is-visible");
@@ -1143,16 +1160,12 @@ function initIntro() {
     tl.call(() => {
       if (curtains) {
         curtains.classList.remove("is-tension");
-        curtains.classList.add("is-open", "is-blazing");
+        curtains.classList.add("is-open", "is-blooming");
       }
-      makeGoldDust(isNarrow ? 55 : isMobile ? 75 : 110);
-      makeSparks(isNarrow ? 40 : isMobile ? 55 : 80);
       CinematicAudio.playWhoosh();
-      CinematicAudio.swellMusic(0.48, 3);
+      CinematicAudio.swellMusic(0.42, 3);
+      runCanvasIntro();
     }, null, 5.95);
-
-    // 8) Butterfly + heart swarm + names reveal
-    tl.call(runCanvasIntro, null, 6.55);
   }
 
   let opened = false;

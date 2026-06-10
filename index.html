@@ -20,9 +20,9 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=Parisienne&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Great+Vibes&family=Parisienne&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=hero-curtains1" />
+  <link rel="stylesheet" href="styles.css?v=pastel-burst2" />
 </head>
 <body class="intro-active">
 
@@ -112,24 +112,28 @@
     <div class="curtains" id="curtains" aria-hidden="true">
       <div class="curtain-stage-floor" aria-hidden="true"></div>
       <div class="curtain-spotlight" id="curtainSpotlight" aria-hidden="true"></div>
-      <div class="curtain-blaze" id="curtainBlaze" aria-hidden="true"></div>
+      <div class="curtain-pastel-bloom" id="curtainBloom" aria-hidden="true"></div>
+      <div class="curtain-mist" id="curtainMist" aria-hidden="true"></div>
       <div class="volumetric-glow" id="volumetricGlow" aria-hidden="true"></div>
-      <div class="rays" id="rays" aria-hidden="true"></div>
-      <div class="curtain-valance" id="curtainValance" aria-hidden="true"></div>
-      <div class="curtain-tassel curtain-tassel--left" aria-hidden="true"></div>
-      <div class="curtain-tassel curtain-tassel--right" aria-hidden="true"></div>
+      <div class="curtain-backdrop" aria-hidden="true"></div>
+      <div class="curtain-valance" id="curtainValance" aria-hidden="true">
+        <div class="curtain-valance__body"></div>
+        <div class="curtain-valance__fringe" aria-hidden="true"></div>
+      </div>
       <div class="curtain curtain--left" id="curtainLeft">
+        <div class="curtain__base"></div>
         <div class="curtain__silk"></div>
-        <div class="curtain__floral"></div>
-        <div class="curtain__trim"></div>
+        <div class="curtain__sheen"></div>
         <div class="curtain__folds"></div>
+        <div class="curtain__trim"></div>
         <div class="curtain__edge-glow"></div>
       </div>
       <div class="curtain curtain--right" id="curtainRight">
+        <div class="curtain__base"></div>
         <div class="curtain__silk"></div>
-        <div class="curtain__floral"></div>
-        <div class="curtain__trim"></div>
+        <div class="curtain__sheen"></div>
         <div class="curtain__folds"></div>
+        <div class="curtain__trim"></div>
         <div class="curtain__edge-glow"></div>
       </div>
     </div>
@@ -141,9 +145,9 @@
     <div class="intro-names" id="introNames" aria-hidden="true">
       <p class="intro-names__eyebrow">With the blessings of Allah</p>
       <h2 class="intro-names__title">
-        <span class="royal-shine" data-field="partner1">Sadaat</span>
+        <span class="intro-names__name" data-field="partner1">Sadaat</span>
         <span class="intro-names__weds">weds</span>
-        <span class="royal-shine" data-field="partner2">Daniya</span>
+        <span class="intro-names__name" data-field="partner2">Daniya</span>
       </h2>
     </div>
   </div>
@@ -170,17 +174,23 @@
     <!-- ============ HERO ============ -->
     <section class="hero" id="hero">
       <div class="hero__sparkles" aria-hidden="true"></div>
-      <div class="hero__oval reveal">
-        <div class="hero__inner">
-          <p class="hero__eyebrow">With the blessings of Allah</p>
-          <h1 class="hero__names">
-            <span class="royal-shine" data-field="partner1">Sadaat</span><span class="hero__amp">&amp;</span><span class="royal-shine" data-field="partner2">Daniya</span>
-          </h1>
-          <p class="hero__script">are getting married</p>
-          <p class="hero__date" data-field="date-long">Saturday, July 18, 2026</p>
+      <div class="hero__frame">
+        <header class="hero__bismillah reveal" aria-label="Bismillah — In the name of Allah, the Most Beneficent, the Most Merciful">
+          <img class="hero__bismillah__art" src="images/bismillah-calligraphy.png" alt="" width="862" height="217" decoding="async" aria-hidden="true" />
+          <p class="hero__bismillah__line">In the name of Allah,</p>
+          <p class="hero__bismillah__line hero__bismillah__line--sub">The Most Beneficent, the Most Merciful</p>
+        </header>
+        <div class="hero__oval reveal">
+          <div class="hero__inner">
+            <h1 class="hero__names">
+              <span class="royal-shine" data-field="partner1">Sadaat</span><span class="hero__amp">&amp;</span><span class="royal-shine" data-field="partner2">Daniya</span>
+            </h1>
+          </div>
         </div>
+        <p class="hero__script reveal">are getting married</p>
+        <p class="hero__date reveal" data-field="date-long">Saturday, July 18, 2026</p>
       </div>
-      <p class="hero__sub reveal">Together with their families, they request the honour of your<br />presence at the celebration of their wedding — In Sha Allah.</p>
+      <p class="hero__sub reveal">Together with their families, they request the honour of your presence at the celebration of their wedding — <span class="hero__insha">InshaAllah</span>.</p>
       <div class="scroll-prompt" id="scrollPrompt" aria-hidden="true">
         <span class="scroll-prompt__text">Scroll to explore</span>
         <a href="#countdown" class="scroll-cue" aria-label="Scroll down">
@@ -205,7 +215,7 @@
     <!-- ============ EVENTS ============ -->
     <section class="section events-section" id="events">
       <p class="script-title">Celebrations</p>
-      <p class="section__sub">In Sha Allah — we would be honoured to have you with us</p>
+      <p class="section__sub"><span class="nowrap">InshaAllah</span> — we would be honoured to have you with us</p>
       <div class="events">
         <article class="event-card reveal">
           <span class="event-card__no">I</span>
@@ -328,7 +338,7 @@
     <div class="footer__mono" aria-hidden="true">S<span>&amp;</span>D</div>
     <p class="footer__names">Sadaat &amp; Daniya</p>
     <p class="footer__date" data-field="date-long">Saturday, July 18, 2026</p>
-    <p class="footer__credit">Celebrating love &amp; happiness — we hope to see you, In Sha Allah</p>
+    <p class="footer__credit">Celebrating love &amp; happiness — we hope to see you, <span class="nowrap">InshaAllah</span></p>
   </footer>
 
   <!-- Confirmation butterflies overlay -->
@@ -336,6 +346,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
-  <script src="script.js?v=hero-curtains1" defer></script>
+  <script src="script.js?v=pastel-burst2" defer></script>
 </body>
 </html>
