@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Great+Vibes&family=Parisienne&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=pastel-burst2" />
+  <link rel="stylesheet" href="styles.css?v=curtain-seal3" />
 </head>
 <body class="intro-active">
 
@@ -58,7 +58,7 @@
         </h1>
       </header>
 
-      <div class="luxury-envelope" id="luxuryEnvelope" role="button" tabindex="0" aria-label="Tap the wax seal to open the invitation">
+      <div class="luxury-envelope" id="luxuryEnvelope" aria-label="Wedding invitation envelope">
 
         <!-- Golden light blooms from the seam as it opens -->
         <div class="env-bloom" id="envBloom" aria-hidden="true"></div>
@@ -87,7 +87,9 @@
         <div class="env-seam" aria-hidden="true"></div>
 
         <!-- Photorealistic wax seal (tap target) -->
-        <button class="wax-seal" id="waxSeal" type="button" aria-label="Tap the seal to open">
+        <button class="wax-seal" id="waxSeal" type="button" aria-label="Tap the seal to open the invitation">
+          <span class="wax-seal__pulse-ring" aria-hidden="true"></span>
+          <span class="wax-seal__pulse-ring wax-seal__pulse-ring--delay" aria-hidden="true"></span>
           <span class="wax-seal__glow" aria-hidden="true"></span>
           <img class="wax-seal__img" src="images/wax-seal.png" alt="" />
           <span class="wax-seal__sparkle-ring" aria-hidden="true"></span>
@@ -116,6 +118,7 @@
       <div class="curtain-mist" id="curtainMist" aria-hidden="true"></div>
       <div class="volumetric-glow" id="volumetricGlow" aria-hidden="true"></div>
       <div class="curtain-backdrop" aria-hidden="true"></div>
+      <div class="curtain-bright-wash" aria-hidden="true"></div>
       <div class="curtain-valance" id="curtainValance" aria-hidden="true">
         <div class="curtain-valance__body"></div>
         <div class="curtain-valance__fringe" aria-hidden="true"></div>
@@ -123,18 +126,26 @@
       <div class="curtain curtain--left" id="curtainLeft">
         <div class="curtain__base"></div>
         <div class="curtain__silk"></div>
-        <div class="curtain__sheen"></div>
+        <div class="curtain__pleats" aria-hidden="true"></div>
         <div class="curtain__folds"></div>
+        <div class="curtain__swag" aria-hidden="true"></div>
+        <div class="curtain__sheen"></div>
+        <div class="curtain__lining" aria-hidden="true"></div>
         <div class="curtain__trim"></div>
         <div class="curtain__edge-glow"></div>
+        <div class="curtain__hem" aria-hidden="true"></div>
       </div>
       <div class="curtain curtain--right" id="curtainRight">
         <div class="curtain__base"></div>
         <div class="curtain__silk"></div>
-        <div class="curtain__sheen"></div>
+        <div class="curtain__pleats" aria-hidden="true"></div>
         <div class="curtain__folds"></div>
+        <div class="curtain__swag" aria-hidden="true"></div>
+        <div class="curtain__sheen"></div>
+        <div class="curtain__lining" aria-hidden="true"></div>
         <div class="curtain__trim"></div>
         <div class="curtain__edge-glow"></div>
+        <div class="curtain__hem" aria-hidden="true"></div>
       </div>
     </div>
 
@@ -346,6 +357,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
-  <script src="script.js?v=pastel-burst2" defer></script>
+  <script src="script.js?v=curtain-seal3" defer></script>
 </body>
 </html>

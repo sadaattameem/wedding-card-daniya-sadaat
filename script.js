@@ -40,12 +40,21 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matc
 const isMobile = window.matchMedia("(max-width: 768px)").matches;
 const isNarrow = window.matchMedia("(max-width: 480px)").matches;
 const rand = (a, b) => a + Math.random() * (b - a);
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
+const lerpFactor = (rate, dt) => 1 - Math.pow(1 - rate, dt * 60);
+
+function canvasDPR() {
+  if (isNarrow) return 1;
+  if (isMobile) return Math.min(1.25, window.devicePixelRatio || 1);
+  return Math.min(1.5, window.devicePixelRatio || 1);
+}
 
 function butterflyCount() {
   const area = window.innerWidth * window.innerHeight;
-  if (isNarrow) return Math.max(85, Math.min(160, Math.round(area / 6500)));
-  if (isMobile) return Math.max(120, Math.min(260, Math.round(area / 5000)));
-  return Math.max(240, Math.min(460, Math.round(area / 3800)));
+  if (isNarrow) return Math.max(70, Math.min(130, Math.round(area / 7200)));
+  if (isMobile) return Math.max(95, Math.min(200, Math.round(area / 5500)));
+  return Math.max(180, Math.min(340, Math.round(area / 4200)));
 }
 
 function withGSAP(fn) {
@@ -449,7 +458,7 @@ function initPetals() {
   const COLORS = ["#f5e2e6", "#e7b9c2", "#ecd6a3", "#f5ecd9", "#c98b96"];
 
   function resize() {
-    DPR = Math.min(2, window.devicePixelRatio || 1);
+    DPR = canvasDPR();
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = W * DPR; canvas.height = H * DPR;
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
@@ -470,15 +479,17 @@ function initPetals() {
     }
   }
   function draw() {
+    if (document.body.classList.contains("intro-active")) {
+      requestAnimationFrame(draw);
+      return;
+    }
     ctx.clearRect(0, 0, W, H);
     for (const p of petals) {
       p.y += p.sp; p.phase += 0.01; p.x += Math.sin(p.phase) * p.sway * 0.5; p.rot += p.rotSp;
       if (p.y - p.r > H) { p.y = -p.r * 2; p.x = Math.random() * W; }
       ctx.save();
       ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = p.alpha;
-      const g = ctx.createLinearGradient(0, -p.r, 0, p.r);
-      g.addColorStop(0, "#ffffff"); g.addColorStop(1, p.color);
-      ctx.fillStyle = g;
+      ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.ellipse(0, 0, p.r * 0.62, p.r, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -776,10 +787,10 @@ function initAmbientParticles() {
   const canvas = document.getElementById("ambientCanvas");
   if (!canvas || reducedMotion) return;
   const ctx = canvas.getContext("2d");
-  let W, H, DPR, dots = [];
+  let W, H, DPR, dots = [], paused = false;
 
   function resize() {
-    DPR = Math.min(2, window.devicePixelRatio || 1);
+    DPR = canvasDPR();
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = W * DPR; canvas.height = H * DPR;
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
@@ -794,15 +805,17 @@ function initAmbientParticles() {
     }));
   }
   function draw() {
+    if (paused || document.getElementById("introCanvas")?.dataset.active === "1") {
+      requestAnimationFrame(draw);
+      return;
+    }
     ctx.clearRect(0, 0, W, H);
     for (const d of dots) {
       d.y -= d.sp; d.ph += 0.012; d.x += Math.sin(d.ph) * 0.25;
       if (d.y < -4) { d.y = H + 4; d.x = Math.random() * W; }
       ctx.globalAlpha = d.a;
-      const g = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 3);
-      g.addColorStop(0, d.hue); g.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = d.hue;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 2.2, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
     if (!document.getElementById("intro")?.classList.contains("is-done")) {
@@ -811,6 +824,8 @@ function initAmbientParticles() {
   }
   resize();
   window.addEventListener("resize", resize);
+  window.pauseAmbientParticles = () => { paused = true; };
+  window.resumeAmbientParticles = () => { paused = false; };
   requestAnimationFrame(draw);
 }
 
@@ -842,11 +857,14 @@ function initIntro() {
   const ctx = canvas && canvas.getContext ? canvas.getContext("2d") : null;
   let W = 0, H = 0, DPR = 1, cx = 0, cy = 0, A = 0, B = 0;
   let particles = [];
-  let raf = 0, startTime = 0, dispersed = false, canvasAlpha = 1;
+  let raf = 0, startTime = 0, lastFrame = 0, dispersed = false, canvasAlpha = 1;
+  let washGradient = null, washRadius = 0;
 
-  const T_BURST = 650, T_ARRANGE = 2400, T_NAMES = 2200, T_DISPERSE = 7500, T_FINISH = 9800;
+  const T_BURST = 650, T_ARRANGE = 2600, T_NAMES = 2300, T_DISPERSE = 7800, T_FINISH = 10000;
 
   function finish() {
+    if (canvas) canvas.dataset.active = "0";
+    window.resumeAmbientParticles?.();
     intro.classList.add("is-done");
     body.classList.remove("intro-active");
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -859,13 +877,27 @@ function initIntro() {
 
   function resize() {
     if (!ctx) return;
-    DPR = Math.min(2, window.devicePixelRatio || 1);
+    DPR = canvasDPR();
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     cx = W / 2; cy = H * 0.44;
     A = Math.min(W * 0.38, 420); B = Math.min(H * 0.36, 360);
+    washRadius = Math.max(A, B) * 1.45;
+    washGradient = null;
+  }
+
+  function ensureWashGradient() {
+    if (washGradient && washGradient._r === washRadius) return washGradient;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, washRadius);
+    g.addColorStop(0, "rgba(255, 252, 248, 0.95)");
+    g.addColorStop(0.38, "rgba(245, 226, 230, 0.5)");
+    g.addColorStop(0.68, "rgba(251, 247, 240, 0.22)");
+    g.addColorStop(1, "rgba(253, 249, 242, 0)");
+    g._r = washRadius;
+    washGradient = g;
+    return g;
   }
 
   const OVAL_RINGS = [
@@ -946,48 +978,50 @@ function initIntro() {
   }
 
   function drawPastelWash(t) {
-    const bloom = Math.min(1, t / 1200);
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(A, B) * 1.45);
-    g.addColorStop(0, `rgba(255, 252, 248, ${0.55 + 0.4 * bloom})`);
-    g.addColorStop(0.38, `rgba(245, 226, 230, ${0.28 + 0.22 * bloom})`);
-    g.addColorStop(0.68, `rgba(251, 247, 240, ${0.12 + 0.1 * bloom})`);
-    g.addColorStop(1, "rgba(253, 249, 242, 0)");
-    ctx.fillStyle = g;
+    const bloom = easeOutCubic(Math.min(1, t / 1400));
+    ctx.globalAlpha = 0.55 + 0.45 * bloom;
+    ctx.fillStyle = ensureWashGradient();
     ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
 
-    if (t >= T_BURST * 0.4 && !dispersed) {
-      const ringAlpha = canvasAlpha * Math.min(1, (t - T_BURST * 0.4) / 1400) * 0.22;
-      ctx.save();
+    if (t >= T_BURST * 0.5 && !dispersed) {
+      const ringAlpha = canvasAlpha * easeOutCubic(Math.min(1, (t - T_BURST * 0.5) / 1600)) * 0.18;
       ctx.globalAlpha = ringAlpha;
-      ctx.strokeStyle = "rgba(231, 185, 194, 0.55)";
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "rgba(231, 185, 194, 0.45)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(cx, cy, A * 1.02, B * 1.02, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.restore();
+      ctx.globalAlpha = 1;
     }
   }
 
   function drawButterfly(p) {
     const tex = butterflyTextures[p.tex];
     if (!tex) return;
-    const sx = 0.42 + 0.58 * Math.abs(Math.sin(p.flap));
-    ctx.save();
+    const sx = 0.5 + 0.5 * Math.abs(Math.sin(p.flap));
+    const half = p.size / 2;
     ctx.globalAlpha = canvasAlpha * p.alpha;
-    ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(sx, 1);
-    ctx.drawImage(tex.canvas, -p.size / 2, -p.size / 2, p.size, p.size);
-    ctx.restore();
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.scale(sx, 1);
+    ctx.drawImage(tex.canvas, -half, -half, p.size, p.size);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
 
   function drawHeart(p) {
     const tex = heartTextures[p.tex];
     if (!tex) return;
-    const pulse = 0.86 + 0.14 * Math.sin(p.pulse);
-    ctx.save();
+    const pulse = 0.88 + 0.12 * Math.sin(p.pulse);
+    const half = p.size / 2;
     ctx.globalAlpha = canvasAlpha * p.alpha;
-    ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(pulse, pulse);
-    ctx.drawImage(tex.canvas, -p.size / 2, -p.size / 2, p.size, p.size);
-    ctx.restore();
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.scale(pulse, pulse);
+    ctx.drawImage(tex.canvas, -half, -half, p.size, p.size);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
 
   function drawParticle(p) {
@@ -998,7 +1032,10 @@ function initIntro() {
   function frame(now) {
     if (!startTime) startTime = now;
     const t = now - startTime;
-    const dt = 1 / 60;
+    const dt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 1 / 60;
+    lastFrame = now;
+    const arrangeProg = t < T_BURST ? 0 : easeOutCubic(Math.min(1, (t - T_BURST) / (T_ARRANGE - T_BURST)));
+
     ctx.clearRect(0, 0, W, H);
     drawPastelWash(t);
 
@@ -1006,29 +1043,38 @@ function initIntro() {
       if (p.kind === "heart") p.pulse += p.pulseSpeed * dt;
       else p.flap += p.flapSpeed * dt;
       if (t < T_BURST) {
-        p.x += p.bvx; p.y += p.bvy; p.bvx *= 0.91; p.bvy *= 0.91;
+        const burstEase = easeOutQuad(t / T_BURST);
+        p.x += p.bvx * dt * 60 * (0.55 + 0.45 * (1 - burstEase));
+        p.y += p.bvy * dt * 60 * (0.55 + 0.45 * (1 - burstEase));
+        p.bvx *= Math.pow(0.91, dt * 60);
+        p.bvy *= Math.pow(0.91, dt * 60);
         p.rot += p.rotSpeed * dt;
       } else if (!dispersed) {
-        const arranged = t >= T_ARRANGE;
-        const snap = p.isOval ? 0.09 : 0.045;
-        const dox = arranged ? Math.cos(p.driftA + t * 0.001 * p.driftS) * p.driftR : 0;
-        const doy = arranged ? Math.sin(p.driftA + t * 0.0013 * p.driftS) * p.driftR : 0;
+        const arranged = arrangeProg >= 1;
+        const snap = p.isOval ? lerpFactor(0.035 + 0.07 * arrangeProg, dt) : lerpFactor(0.02, dt);
+        const dox = arranged ? Math.cos(p.driftA + t * 0.0008 * p.driftS) * p.driftR : 0;
+        const doy = arranged ? Math.sin(p.driftA + t * 0.001 * p.driftS) * p.driftR : 0;
         p.x += (p.tx + dox - p.x) * snap;
         p.y += (p.ty + doy - p.y) * snap;
-        const flutter = p.isOval ? Math.sin(p.flap * 0.08) * 0.12 : Math.sin(p.flap * 0.08) * 0.18;
+        const flutter = p.isOval ? Math.sin(p.flap * 0.07) * 0.1 : Math.sin(p.flap * 0.08) * 0.14;
         const goal = (p.targetRot ?? p.rot) + flutter;
-        p.rot += (goal - p.rot) * (p.isOval ? 0.07 : 0.04);
+        p.rot += (goal - p.rot) * lerpFactor(p.isOval ? 0.06 : 0.035, dt);
       } else {
-        p.x += p.dvx; p.y += p.dvy; p.dvy += 0.05; p.rot += p.rotSpeed * dt;
+        p.x += p.dvx * dt * 60; p.y += p.dvy * dt * 60;
+        p.dvy += 0.05 * dt * 60; p.rot += p.rotSpeed * dt;
       }
       drawParticle(p);
     }
     ctx.globalAlpha = 1;
-    if (dispersed) canvasAlpha = Math.max(0, canvasAlpha - 0.01);
+    if (dispersed) canvasAlpha = Math.max(0, canvasAlpha - 0.008 * dt * 60);
     raf = requestAnimationFrame(frame);
   }
 
   const onResize = () => resize();
+
+  function revealIntroNames() {
+    if (names) names.classList.add("show");
+  }
 
   function runCanvasIntro() {
     if (!ctx) { setTimeout(finish, 1400); return; }
@@ -1036,13 +1082,16 @@ function initIntro() {
     dispersed = false;
     canvasAlpha = 1;
     startTime = 0;
+    lastFrame = 0;
+    canvas.dataset.active = "1";
+    window.pauseAmbientParticles?.();
     window.addEventListener("resize", onResize);
     const count = butterflyCount();
     makeParticles(count);
     if (raf) cancelAnimationFrame(raf);
     startTime = performance.now();
     raf = requestAnimationFrame(frame);
-    setTimeout(() => { if (names) names.classList.add("show"); }, T_NAMES);
+    setTimeout(revealIntroNames, T_NAMES);
     setTimeout(() => {
       dispersed = true;
       for (const p of particles) {
@@ -1054,6 +1103,8 @@ function initIntro() {
     setTimeout(finish, T_FINISH);
     setTimeout(() => {
       cancelAnimationFrame(raf);
+      canvas.dataset.active = "0";
+      window.resumeAmbientParticles?.();
       window.removeEventListener("resize", onResize);
     }, T_FINISH + 1400);
   }
@@ -1086,10 +1137,19 @@ function initIntro() {
     }
   }
 
+  const curtainLeft = document.getElementById("curtainLeft");
+  const curtainRight = document.getElementById("curtainRight");
+  const curtainBloom = document.getElementById("curtainBloom");
+  const brightWash = document.querySelector(".curtain-bright-wash");
+  const curtainMist = document.getElementById("curtainMist");
+  const volumetricGlow = document.getElementById("volumetricGlow");
+  const curtainSpotlight = document.getElementById("curtainSpotlight");
+
   function runCinematicTimeline() {
     CinematicAudio.init();
     CinematicAudio.resume();
     startMusic();
+    window.pauseAmbientParticles?.();
 
     if (reducedMotion || !window.gsap) {
       if (seal) { seal.classList.add("is-glowing", "is-opening"); }
@@ -1097,13 +1157,33 @@ function initIntro() {
       if (curtains) {
         curtains.classList.add("is-visible", "is-spotlit", "is-valance-down", "is-open", "is-blooming");
       }
-      if (names) names.classList.add("show");
+      if (window.gsap && curtainLeft && curtainRight) {
+        gsap.set([curtainLeft, curtainRight], { transformPerspective: 1600, force3D: true });
+        gsap.set(curtainLeft, { xPercent: -108, rotateY: 18, scaleX: 0.96, z: 40 });
+        gsap.set(curtainRight, { xPercent: 108, rotateY: -18, scaleX: 0.96, z: 40 });
+      }
+      if (brightWash) brightWash.style.opacity = "1";
+      if (curtainBloom) {
+        curtainBloom.style.opacity = "0.95";
+        curtainBloom.style.transform = "translate(-50%, -50%) scale(1)";
+      }
       CinematicAudio.swellMusic(0.38, 1.5);
       setTimeout(runCanvasIntro, 300);
       return;
     }
 
-    const tl = gsap.timeline({ defaults: { ease: "power2.inOut" } });
+    gsap.config({ force3D: true });
+    if (curtainLeft && curtainRight) {
+      gsap.set(curtainLeft, { transformPerspective: 1600, force3D: true, xPercent: 0, rotateY: 2, z: 0 });
+      gsap.set(curtainRight, { transformPerspective: 1600, force3D: true, xPercent: 0, rotateY: -2, z: 0 });
+    }
+    if (curtainBloom) gsap.set(curtainBloom, { xPercent: -50, yPercent: -50, scale: 0, opacity: 0 });
+    if (brightWash) gsap.set(brightWash, { opacity: 0 });
+    if (curtainMist) gsap.set(curtainMist, { opacity: 0 });
+    if (volumetricGlow) gsap.set(volumetricGlow, { opacity: 0 });
+    if (curtainSpotlight) gsap.set(curtainSpotlight, { xPercent: -50, yPercent: -50, scale: 0.5, opacity: 0 });
+
+    const tl = gsap.timeline({ defaults: { ease: "power1.inOut" } });
 
     // 1) Seal glows warmly
     tl.call(() => seal.classList.add("is-glowing"), null, 0);
@@ -1112,7 +1192,7 @@ function initIntro() {
     // 2) Seal lifts and fades — positive reveal
     tl.call(() => seal.classList.add("is-opening"), null, 1.4);
     tl.to(seal, {
-      y: -28, scale: 1.12, opacity: 0, duration: 1.3, ease: "power2.out",
+      y: -28, scale: 1.12, opacity: 0, duration: 1.3, ease: "power1.out", force3D: true,
     }, 1.4);
     tl.call(() => {
       spawnSealHearts();
@@ -1128,12 +1208,12 @@ function initIntro() {
     if (envTop && envBottom) {
       gsap.set([envTop, envBottom], { transformPerspective: 1600, transformStyle: "preserve-3d" });
       tl.to(envTop, {
-        rotateX: 92, y: "-4%", z: 56, duration: 2.2, ease: "power3.out",
-        transformOrigin: "bottom center",
+        rotateX: 92, y: "-4%", z: 56, duration: 2.4, ease: "power2.inOut",
+        transformOrigin: "bottom center", force3D: true,
       }, 2.7);
       tl.to(envBottom, {
-        rotateX: -96, y: "4%", z: 56, duration: 2.2, ease: "power3.out",
-        transformOrigin: "top center",
+        rotateX: -96, y: "4%", z: 56, duration: 2.4, ease: "power2.inOut",
+        transformOrigin: "top center", force3D: true,
       }, 2.7);
     } else {
       tl.call(() => envelope.classList.add("is-open"), null, 2.7);
@@ -1141,7 +1221,7 @@ function initIntro() {
     if (envBloom) {
       tl.to(envBloom, { scale: 1.2, opacity: 1, duration: 2, ease: "power2.out" }, 2.9);
     }
-    tl.to(stage, { scale: isMobile ? 1.04 : 1.1, z: 30, duration: 2.8, ease: "power2.out" }, 2.6);
+    tl.to(stage, { scale: isMobile ? 1.04 : 1.08, z: 30, duration: 2.6, ease: "power1.out", force3D: true }, 2.6);
     tl.call(() => CinematicAudio.swellMusic(0.28, 2.4), null, 2.9);
 
     // 5) Envelope fades — grand curtains rise into view
@@ -1155,17 +1235,51 @@ function initIntro() {
       if (curtains) curtains.classList.add("is-spotlit");
       CinematicAudio.swellMusic(0.22, 1.4);
     }, null, 4.35);
+    if (curtainSpotlight) {
+      tl.to(curtainSpotlight, { scale: 1, opacity: 1, duration: 2, ease: "power2.out" }, 4.35);
+    }
     tl.call(() => { if (curtains) curtains.classList.add("is-valance-down"); }, null, 4.7);
-    tl.call(() => { if (curtains) curtains.classList.add("is-tension"); }, null, 5.35);
+    if (curtainLeft && curtainRight) {
+      tl.to(curtainLeft, {
+        xPercent: -3, rotateY: 5, scaleX: 1.025, duration: 0.65, ease: "sine.inOut",
+      }, 5.35);
+      tl.to(curtainRight, {
+        xPercent: 3, rotateY: -5, scaleX: 1.025, duration: 0.65, ease: "sine.inOut",
+      }, 5.35);
+    }
     tl.call(() => {
-      if (curtains) {
-        curtains.classList.remove("is-tension");
-        curtains.classList.add("is-open", "is-blooming");
-      }
+      if (curtains) curtains.classList.add("is-open", "is-blooming");
       CinematicAudio.playWhoosh();
       CinematicAudio.swellMusic(0.42, 3);
       runCanvasIntro();
     }, null, 5.95);
+    if (curtainLeft && curtainRight) {
+      tl.to(curtainLeft, {
+        xPercent: -108,
+        rotateY: 20,
+        scaleX: 0.95,
+        scaleY: 1.02,
+        z: 55,
+        duration: 3.6,
+        ease: "power1.inOut",
+        force3D: true,
+      }, 5.95);
+      tl.to(curtainRight, {
+        xPercent: 108,
+        rotateY: -20,
+        scaleX: 0.95,
+        scaleY: 1.02,
+        z: 55,
+        duration: 3.6,
+        ease: "power1.inOut",
+        force3D: true,
+      }, 6.08);
+    }
+    if (brightWash) tl.to(brightWash, { opacity: 1, duration: 3, ease: "sine.out" }, 5.95);
+    if (curtainBloom) tl.to(curtainBloom, { scale: 1, opacity: 0.95, duration: 3, ease: "sine.out" }, 5.95);
+    if (curtainMist) tl.to(curtainMist, { opacity: 1, duration: 2.8, ease: "sine.out" }, 6.15);
+    if (volumetricGlow) tl.to(volumetricGlow, { opacity: 1, duration: 2.6, ease: "sine.out" }, 6.2);
+    if (curtainSpotlight) tl.to(curtainSpotlight, { scale: 1.12, duration: 3.2, ease: "sine.out" }, 5.95);
   }
 
   let opened = false;
@@ -1177,14 +1291,13 @@ function initIntro() {
     runCinematicTimeline();
   }
 
-  if (seal) seal.addEventListener("click", open);
-  envelope.addEventListener("click", (e) => {
-    if (e.target === seal || seal?.contains(e.target)) return;
-    open(e);
-  });
-  envelope.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); }
-  });
+  if (seal) {
+    seal.addEventListener("click", open);
+    seal.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); }
+    });
+    requestAnimationFrame(() => seal.focus({ preventScroll: true }));
+  }
 
   initAmbientParticles();
 }
