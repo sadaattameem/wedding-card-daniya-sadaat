@@ -239,8 +239,106 @@ function revealHero() {
   if (window.gsap) {
     gsap.to(heroItems, {
       autoAlpha: 1, y: 0, duration: 1.1, ease: "power2.out", stagger: 0.12,
-      onComplete: () => { if (window.ScrollTrigger) ScrollTrigger.refresh(); },
+      onComplete: () => {
+        if (window.ScrollTrigger) ScrollTrigger.refresh();
+        fitHeroContent();
+        showScrollPrompt();
+      },
     });
+  } else {
+    fitHeroContent();
+    showScrollPrompt();
+  }
+}
+
+/* ============================================================
+   SCROLL PROMPT — appears after intro, hides on first scroll
+   ============================================================ */
+let scrollPromptShown = false;
+let scrollPromptDismissed = false;
+
+function showScrollPrompt() {
+  if (scrollPromptShown || scrollPromptDismissed) return;
+  const prompt = document.getElementById("scrollPrompt");
+  if (!prompt) return;
+
+  const reveal = () => {
+    scrollPromptShown = true;
+    prompt.setAttribute("aria-hidden", "false");
+    prompt.classList.add("is-visible");
+    if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      gsap.fromTo(prompt,
+        { y: 24, autoAlpha: 0 },
+        { y: 0, autoAlpha: 1, duration: 0.9, ease: "back.out(1.4)" }
+      );
+    }
+  };
+
+  setTimeout(reveal, 1200);
+}
+
+function initScrollPrompt() {
+  const prompt = document.getElementById("scrollPrompt");
+  if (!prompt) return;
+
+  function dismiss() {
+    if (scrollPromptDismissed) return;
+    scrollPromptDismissed = true;
+    prompt.classList.add("is-dismissed");
+    prompt.classList.remove("is-visible");
+    prompt.setAttribute("aria-hidden", "true");
+    window.removeEventListener("scroll", onScroll);
+    window.removeEventListener("touchmove", onTouch);
+  }
+
+  function onScroll() {
+    if (window.scrollY > 40) dismiss();
+  }
+
+  let touchStartY = 0;
+  function onTouch(e) {
+    if (e.type === "touchstart") {
+      touchStartY = e.touches[0].clientY;
+      return;
+    }
+    if (Math.abs(touchStartY - e.touches[0].clientY) > 30) dismiss();
+  }
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("touchstart", onTouch, { passive: true });
+  window.addEventListener("touchmove", onTouch, { passive: true });
+
+  prompt.querySelector(".scroll-cue")?.addEventListener("click", () => {
+    setTimeout(dismiss, 400);
+  });
+}
+
+/* ============================================================
+   HERO OVAL FIT — scale inner content if it overflows the frame
+   ============================================================ */
+function fitHeroContent() {
+  const oval = document.querySelector(".hero__oval");
+  const inner = document.querySelector(".hero__inner");
+  if (!oval || !inner) return;
+
+  function fit() {
+    const maxH = oval.clientHeight * 0.72;
+    const innerH = inner.scrollHeight;
+    if (innerH > maxH && maxH > 0) {
+      const scale = Math.max(0.78, maxH / innerH);
+      inner.style.setProperty("--hero-scale", scale.toFixed(3));
+    } else {
+      inner.style.setProperty("--hero-scale", "1");
+    }
+  }
+
+  fit();
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(fit);
+    ro.observe(oval);
+    ro.observe(inner);
+  } else {
+    window.addEventListener("resize", fit);
   }
 }
 
@@ -976,7 +1074,9 @@ function initIntro() {
     if (reducedMotion || !window.gsap) {
       if (seal) { seal.classList.add("is-glowing", "is-opening"); }
       envelope.classList.add("is-pulsing", "is-opening", "is-open", "is-gone");
-      if (curtains) curtains.classList.add("is-visible", "is-open", "is-blazing");
+      if (curtains) {
+        curtains.classList.add("is-visible", "is-spotlit", "is-valance-down", "is-open", "is-blazing");
+      }
       if (names) names.classList.add("show");
       CinematicAudio.swellMusic(0.38, 1.5);
       setTimeout(runCanvasIntro, 400);
@@ -1027,21 +1127,32 @@ function initIntro() {
     // 5) Golden burst from envelope interior
     tl.call(() => startBurstFX(), null, 3.4);
 
-    // 6) Envelope fades — royal curtains appear
+    // 6) Envelope fades — grand curtains rise into view
     tl.call(() => {
       envelope.classList.add("is-gone");
       if (curtains) curtains.classList.add("is-visible");
     }, null, 4.0);
 
-    // 7) Curtains part — cinematic trailer moment
+    // 7) Theatrical curtain sequence — spotlight, valance, tension, grand part
     tl.call(() => {
-      if (curtains) curtains.classList.add("is-open", "is-blazing");
+      if (curtains) curtains.classList.add("is-spotlit");
+      CinematicAudio.swellMusic(0.22, 1.4);
+    }, null, 4.35);
+    tl.call(() => { if (curtains) curtains.classList.add("is-valance-down"); }, null, 4.7);
+    tl.call(() => { if (curtains) curtains.classList.add("is-tension"); }, null, 5.35);
+    tl.call(() => {
+      if (curtains) {
+        curtains.classList.remove("is-tension");
+        curtains.classList.add("is-open", "is-blazing");
+      }
+      makeGoldDust(isNarrow ? 55 : isMobile ? 75 : 110);
+      makeSparks(isNarrow ? 40 : isMobile ? 55 : 80);
       CinematicAudio.playWhoosh();
-      CinematicAudio.swellMusic(0.42, 2.8);
-    }, null, 4.8);
+      CinematicAudio.swellMusic(0.48, 3);
+    }, null, 5.95);
 
     // 8) Butterfly + heart swarm + names reveal
-    tl.call(runCanvasIntro, null, 5.4);
+    tl.call(runCanvasIntro, null, 6.55);
   }
 
   let opened = false;
@@ -1077,6 +1188,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initCountdown();
   initNav();
   initReveal();
+  initScrollPrompt();
   initParallax();
   initPetals();
   initMusic();
