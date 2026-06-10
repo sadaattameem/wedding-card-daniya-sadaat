@@ -1385,68 +1385,182 @@ body.nav-open { overflow: hidden; }
 }
 .scroll-prompt {
   position: fixed;
-  left: 50%;
-  bottom: max(22px, env(safe-area-inset-bottom, 0px) + 14px);
-  z-index: 45;
-  transform: translateX(-50%) translateY(24px);
+  z-index: 410;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.5s ease, visibility 0.5s ease, transform 0.5s ease;
+  transition: opacity 0.45s ease, visibility 0.45s ease, transform 0.45s ease, left 0.35s ease, right 0.35s ease, bottom 0.35s ease;
+}
+.scroll-prompt--hero {
+  left: 50%;
+  right: auto;
+  bottom: max(22px, env(safe-area-inset-bottom, 0px) + 14px);
+  transform: translateX(-50%) translateY(16px);
+}
+.scroll-prompt--dock {
+  left: auto;
+  right: max(clamp(12px, 3vw, 24px), env(safe-area-inset-right, 0px));
+  bottom: var(--scroll-prompt-bottom, 72px);
+  transform: translateY(10px);
+}
+.scroll-prompt.is-visible.scroll-prompt--hero {
+  transform: translateX(-50%) translateY(0);
+}
+.scroll-prompt.is-visible.scroll-prompt--dock {
+  transform: translateY(0);
 }
 .scroll-prompt.is-visible {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
+}
+.scroll-prompt.is-visible.is-entering.scroll-prompt--hero {
+  animation: scrollPromptHeroIn 0.7s cubic-bezier(0.2, 0.7, 0.2, 1.2) both;
+}
+.scroll-prompt.is-visible.is-entering.scroll-prompt--dock {
+  animation: scrollPromptDockIn 0.55s ease both;
+}
+.scroll-prompt.is-dismissed.scroll-prompt--hero {
+  transform: translateX(-50%) translateY(12px);
+}
+.scroll-prompt.is-dismissed.scroll-prompt--dock {
+  transform: translateY(8px);
 }
 .scroll-prompt.is-dismissed {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateX(-50%) translateY(16px);
+}
+@keyframes scrollPromptHeroIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(18px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes scrollPromptDockIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .scroll-prompt__link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
+  display: block;
   text-decoration: none;
   color: inherit;
 }
-.scroll-prompt__text {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-size: clamp(0.92rem, 2.8vw, 1.08rem);
+.scroll-prompt__beacon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: opacity 0.25s ease;
+}
+.scroll-prompt--hero .scroll-prompt__beacon {
+  gap: 0.5rem;
+  opacity: 1;
+  animation: scrollBeaconFloat 2.4s ease-in-out infinite;
+}
+.scroll-prompt--dock .scroll-prompt__beacon {
+  gap: 0.28rem;
+  opacity: 0.92;
+}
+.scroll-prompt__link:hover .scroll-prompt__beacon,
+.scroll-prompt__link:focus-visible .scroll-prompt__beacon {
+  opacity: 1;
+}
+.scroll-prompt__track {
+  display: none;
+}
+.scroll-prompt--hero .scroll-prompt__track {
+  display: block;
+  position: relative;
+  width: 2px;
+  height: 36px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--champagne-lt) 22%,
+    var(--champagne-dk) 78%,
+    transparent 100%
+  );
+}
+.scroll-prompt__dot {
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--champagne-dk);
+  box-shadow: 0 0 8px rgba(184, 146, 63, 0.4);
+  animation: scrollDotTravel 2.2s ease-in-out infinite;
+}
+.scroll-prompt__label--hero,
+.scroll-prompt__label--dock {
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+.scroll-prompt__label--hero {
+  display: none;
+  font-family: var(--font-formal);
+  font-size: clamp(0.78rem, 2.4vw, 0.92rem);
+  font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink);
-  padding: 0.52rem 1.25rem;
-  border: 1px solid var(--champagne);
-  border-radius: 999px;
-  background: rgba(255, 253, 250, 0.92);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 8px 24px rgba(150, 120, 70, 0.22);
-  animation: hintPulse 2.2s ease-in-out infinite;
+  color: var(--champagne-dk);
+  text-shadow: 0 0 12px rgba(251, 247, 240, 0.9);
 }
-.scroll-prompt__arrow {
+.scroll-prompt__label--dock {
+  display: none;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  color: var(--champagne-dk);
+  text-shadow: 0 0 10px rgba(251, 247, 240, 0.85);
+}
+.scroll-prompt--hero .scroll-prompt__label--hero { display: block; }
+.scroll-prompt--dock .scroll-prompt__label--dock { display: block; }
+.scroll-prompt__chev {
   display: block;
-  width: 12px;
-  height: 12px;
-  border-right: 2.5px solid var(--champagne-dk);
-  border-bottom: 2.5px solid var(--champagne-dk);
+  border-right: solid var(--champagne-dk);
+  border-bottom: solid var(--champagne-dk);
   transform: rotate(45deg);
-  animation: scrollArrow 1.6s ease-in-out infinite;
-  flex-shrink: 0;
+  animation: scrollChevBob 2.2s ease-in-out infinite;
 }
-@keyframes scrollArrow {
-  0%, 100% { transform: rotate(45deg) translateY(-2px); opacity: 0.45; }
+.scroll-prompt--hero .scroll-prompt__chev {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+  opacity: 0.85;
+}
+.scroll-prompt--dock .scroll-prompt__chev {
+  width: 8px;
+  height: 8px;
+  border-width: 1.5px;
+  opacity: 0.8;
+}
+@keyframes scrollBeaconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+@keyframes scrollDotTravel {
+  0% { top: 7px; opacity: 1; }
+  75% { top: 24px; opacity: 0.35; }
+  100% { top: 7px; opacity: 1; }
+}
+@keyframes scrollChevBob {
+  0%, 100% { transform: rotate(45deg) translateY(0); opacity: 0.6; }
   50% { transform: rotate(45deg) translateY(3px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-prompt--hero .scroll-prompt__beacon,
+  .scroll-prompt__dot,
+  .scroll-prompt__chev { animation: none; }
 }
 
 @media (max-width: 768px) {
   .hero {
-    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   }
   .hero__sub {
     margin-top: 1rem;
@@ -1454,62 +1568,35 @@ body.nav-open { overflow: hidden; }
     font-size: clamp(0.84rem, 2.1vw, 0.98rem);
     line-height: 1.55;
   }
-  .scroll-prompt {
-    bottom: max(12px, env(safe-area-inset-bottom, 0px) + 8px);
-    z-index: 45;
-  }
-  .scroll-prompt__link {
-    flex-direction: row;
-    gap: 0.45rem;
-  }
-  .scroll-prompt__text {
-    font-size: clamp(0.76rem, 2.6vw, 0.9rem);
+  .scroll-prompt--hero .scroll-prompt__track { height: 30px; }
+  .scroll-prompt--hero .scroll-prompt__label--hero {
+    font-size: clamp(0.72rem, 2.5vw, 0.84rem);
     letter-spacing: 0.14em;
-    padding: 0.4rem 0.9rem;
-    box-shadow: 0 4px 14px rgba(150, 120, 70, 0.18);
-    animation: hintPulse 2.2s ease-in-out infinite;
-    white-space: nowrap;
   }
-  .scroll-prompt__arrow {
-    width: 9px;
-    height: 9px;
-    border-width: 2px;
-  }
+  .scroll-prompt--dock .scroll-prompt__label--dock { font-size: 0.64rem; }
 }
 
 @media (max-width: 480px) {
   .hero {
-    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
   .hero__sub {
     max-width: min(92vw, 340px);
     font-size: 0.8rem;
     line-height: 1.5;
   }
-  .scroll-prompt__text {
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
-    padding: 0.36rem 0.78rem;
-  }
 }
 
 @media (max-height: 700px) and (max-width: 768px) {
   .hero {
     padding: 4.75rem 0.85rem 3.75rem;
-    padding-bottom: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
   .hero__sub {
     margin-top: 0.75rem;
     font-size: 0.76rem;
   }
-  .scroll-prompt__text {
-    font-size: 0.68rem;
-    padding: 0.32rem 0.7rem;
-  }
-  .scroll-prompt__arrow {
-    width: 8px;
-    height: 8px;
-  }
+  .scroll-prompt--hero .scroll-prompt__track { height: 26px; }
 }
 
 /* ============================================================

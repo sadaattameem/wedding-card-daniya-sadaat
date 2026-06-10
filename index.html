@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Great+Vibes&family=Parisienne&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=music-unmute1" />
+  <link rel="stylesheet" href="styles.css?v=scroll-prompt6" />
 </head>
 <body class="intro-active">
 
@@ -400,12 +400,6 @@
         <p class="hero__date reveal"><span data-field="date-long">Saturday, July 18, 2026</span><span class="date-insha"> — InshaAllah</span></p>
       </div>
       <p class="hero__sub reveal">Together with our families, we request the honour of your presence at the celebration of our wedding — <span class="hero__insha">InshaAllah</span>.</p>
-      <div class="scroll-prompt" id="scrollPrompt" aria-hidden="true">
-        <a href="#countdown" class="scroll-prompt__link" aria-label="Scroll to explore">
-          <span class="scroll-prompt__text">Scroll to explore</span>
-          <span class="scroll-prompt__arrow" aria-hidden="true"></span>
-        </a>
-      </div>
     </section>
 
     <!-- ============ COUNTDOWN ============ -->
@@ -542,6 +536,17 @@
     </section>
   </main>
 
+  <div class="scroll-prompt scroll-prompt--hero" id="scrollPrompt" aria-hidden="true">
+    <a href="#countdown" class="scroll-prompt__link" aria-label="More content below — scroll down">
+      <span class="scroll-prompt__beacon" aria-hidden="true">
+        <span class="scroll-prompt__track"><span class="scroll-prompt__dot"></span></span>
+        <span class="scroll-prompt__label scroll-prompt__label--hero">Continue below</span>
+        <span class="scroll-prompt__label scroll-prompt__label--dock">More below</span>
+        <span class="scroll-prompt__chev"></span>
+      </span>
+    </a>
+  </div>
+
   <footer class="footer" id="footer">
     <div class="footer__mono" aria-hidden="true">S<span>&amp;</span>D</div>
     <p class="footer__names">Sadaat &amp; Daniya</p>
@@ -554,6 +559,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
-  <script src="script.js?v=rsvp-accept1" defer></script>
+  <script src="script.js?v=scroll-prompt6" defer></script>
 </body>
 </html>

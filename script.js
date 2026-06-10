@@ -259,22 +259,20 @@ function initNav() {
 /** Hero sits at the top — reveal it when the intro hands off (scroll triggers miss it). */
 function revealHero() {
   const heroItems = document.querySelectorAll("#hero .reveal");
-  if (!heroItems.length) return;
   scheduleHeroButterfly();
   heroItems.forEach((el) => el.classList.add("is-visible"));
-  if (window.gsap) {
+  if (heroItems.length && window.gsap) {
     gsap.to(heroItems, {
       autoAlpha: 1, y: 0, duration: 1.1, ease: "power2.out", stagger: 0.12,
       onComplete: () => {
         if (window.ScrollTrigger) ScrollTrigger.refresh();
         fitHeroContent();
-        showScrollPrompt();
       },
     });
-  } else {
-    fitHeroContent();
-    showScrollPrompt();
   }
+  fitHeroContent();
+  if (window.ScrollTrigger) ScrollTrigger.refresh();
+  enableScrollPrompt();
 }
 
 /* ============================================================
@@ -1376,70 +1374,100 @@ function scheduleHeroButterfly() {
 }
 
 /* ============================================================
-   SCROLL PROMPT — appears after intro, hides on first scroll
+   SCROLL PROMPT — after load, until page bottom, no overlap
    ============================================================ */
-let scrollPromptShown = false;
-let scrollPromptDismissed = false;
+let scrollPromptVisible = false;
+let scrollPromptReady = false;
 let scrollPromptListenersBound = false;
+let scrollPromptScrollRaf = 0;
+let scrollPromptEnableTimer = 0;
 
-function dismissScrollPrompt() {
-  if (scrollPromptDismissed) return;
-  scrollPromptDismissed = true;
+function isIntroBlockingScrollPrompt() {
+  const intro = document.getElementById("intro");
+  return intro && !intro.classList.contains("is-done");
+}
+
+function hasMoreContentBelow() {
+  const scrollBottom = window.scrollY + window.innerHeight;
+  const pageBottom = document.documentElement.scrollHeight;
+  return scrollBottom < pageBottom - 72;
+}
+
+function isHeroScrollPromptActive() {
+  const hero = document.getElementById("hero");
+  if (!hero) return window.scrollY < window.innerHeight * 0.35;
+  const rect = hero.getBoundingClientRect();
+  return rect.bottom > window.innerHeight * 0.48 && rect.top < window.innerHeight * 0.42;
+}
+
+function positionScrollPrompt() {
   const prompt = document.getElementById("scrollPrompt");
+  const music = document.getElementById("musicToggle");
   if (!prompt) return;
 
-  const hide = () => {
-    prompt.classList.add("is-dismissed");
-    prompt.classList.remove("is-visible");
-    prompt.setAttribute("aria-hidden", "true");
-    prompt.style.display = "none";
-  };
+  const onHero = isHeroScrollPromptActive();
+  prompt.classList.toggle("scroll-prompt--hero", onHero);
+  prompt.classList.toggle("scroll-prompt--dock", !onHero);
 
-  if (window.gsap) gsap.killTweensOf(prompt);
-  if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    gsap.to(prompt, { autoAlpha: 0, y: 14, duration: 0.3, ease: "power2.in", onComplete: hide });
-  } else {
-    hide();
-  }
-
-  window.removeEventListener("scroll", onScrollDismiss, { passive: true });
-  window.removeEventListener("wheel", onWheelDismiss, { passive: true });
-  window.removeEventListener("touchstart", onTouchDismiss, { passive: true });
-  window.removeEventListener("touchmove", onTouchDismiss, { passive: true });
-}
-
-function onScrollDismiss() {
-  if (window.scrollY > 0) dismissScrollPrompt();
-}
-
-function onWheelDismiss(e) {
-  if (Math.abs(e.deltaY) > 0) dismissScrollPrompt();
-}
-
-let touchDismissStartY = 0;
-function onTouchDismiss(e) {
-  if (e.type === "touchstart") {
-    touchDismissStartY = e.touches[0].clientY;
+  if (onHero) {
+    prompt.style.removeProperty("--scroll-prompt-bottom");
     return;
   }
-  if (Math.abs(touchDismissStartY - e.touches[0].clientY) > 8) dismissScrollPrompt();
+
+  const gap = 8;
+  let bottom = 72;
+
+  if (music) {
+    const musicRect = music.getBoundingClientRect();
+    if (musicRect.height > 0 && musicRect.top > 0) {
+      bottom = window.innerHeight - musicRect.top + gap;
+    }
+  }
+
+  prompt.style.setProperty("--scroll-prompt-bottom", `${Math.round(bottom)}px`);
 }
 
-function showScrollPrompt() {
-  if (scrollPromptShown || scrollPromptDismissed) return;
-  const prompt = document.getElementById("scrollPrompt");
-  if (!prompt) return;
+function enableScrollPrompt() {
+  clearTimeout(scrollPromptEnableTimer);
+  scrollPromptEnableTimer = window.setTimeout(() => {
+    scrollPromptReady = true;
+    positionScrollPrompt();
+    updateScrollPrompt(true);
+  }, 400);
+}
 
-  scrollPromptShown = true;
-  prompt.style.display = "";
-  prompt.setAttribute("aria-hidden", "false");
-  prompt.classList.add("is-visible");
-  if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    gsap.fromTo(prompt,
-      { y: 18, autoAlpha: 0 },
-      { y: 0, autoAlpha: 1, duration: 0.75, ease: "back.out(1.3)" }
-    );
+function setScrollPromptVisible(show, animateIn = false) {
+  const prompt = document.getElementById("scrollPrompt");
+  if (!prompt || show === scrollPromptVisible) return;
+
+  scrollPromptVisible = show;
+  if (window.gsap) {
+    gsap.killTweensOf(prompt);
+    gsap.set(prompt, { clearProps: "all" });
   }
+
+  if (show) {
+    prompt.style.removeProperty("display");
+    prompt.setAttribute("aria-hidden", "false");
+    prompt.classList.remove("is-dismissed");
+    prompt.classList.add("is-visible");
+    prompt.classList.toggle("is-entering", animateIn && !reducedMotion);
+    return;
+  }
+
+  prompt.classList.remove("is-visible", "is-entering");
+  prompt.classList.add("is-dismissed");
+  prompt.setAttribute("aria-hidden", "true");
+}
+
+function updateScrollPrompt(animateIn = false) {
+  if (!scrollPromptReady || isIntroBlockingScrollPrompt()) {
+    setScrollPromptVisible(false);
+    return;
+  }
+  positionScrollPrompt();
+  const shouldShow = hasMoreContentBelow();
+  setScrollPromptVisible(shouldShow, animateIn);
 }
 
 function initScrollPrompt() {
@@ -1447,12 +1475,28 @@ function initScrollPrompt() {
   if (!prompt || scrollPromptListenersBound) return;
   scrollPromptListenersBound = true;
 
-  window.addEventListener("scroll", onScrollDismiss, { passive: true });
-  window.addEventListener("wheel", onWheelDismiss, { passive: true });
-  window.addEventListener("touchstart", onTouchDismiss, { passive: true });
-  window.addEventListener("touchmove", onTouchDismiss, { passive: true });
+  const scheduleScrollPromptUpdate = () => {
+    if (scrollPromptScrollRaf) return;
+    scrollPromptScrollRaf = requestAnimationFrame(() => {
+      scrollPromptScrollRaf = 0;
+      updateScrollPrompt();
+    });
+  };
 
-  prompt.querySelector(".scroll-prompt__link")?.addEventListener("click", dismissScrollPrompt);
+  window.addEventListener("scroll", scheduleScrollPromptUpdate, { passive: true });
+  window.addEventListener("resize", scheduleScrollPromptUpdate, { passive: true });
+  window.addEventListener("load", scheduleScrollPromptUpdate);
+
+  prompt.querySelector(".scroll-prompt__link")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const remaining = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+    if (remaining <= 72) return;
+    window.scrollBy({
+      top: Math.min(window.innerHeight * 0.85, remaining - 48),
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+  });
+
 }
 
 /* ============================================================
@@ -2228,6 +2272,7 @@ function initIntro() {
     body.classList.remove("intro-active");
     window.scrollTo({ top: 0, behavior: "auto" });
     revealHero();
+    setTimeout(() => updateScrollPrompt(true), 1400);
     setTimeout(() => {
       intro.remove();
       if (window.ScrollTrigger) ScrollTrigger.refresh();
