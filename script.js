@@ -97,18 +97,18 @@ function applyConfig() {
    Butterfly textures (procedural, luxury palette)
    ============================================================ */
 const BFLY_PALETTE = [
-  { fill: "#faf6f0", edge: "#e8ddd0" }, // soft ivory
-  { fill: "#f4cfd8", edge: "#d4a8b2" }, // blush
-  { fill: "#c8d4bc", edge: "#a8b89a" }, // sage
-  { fill: "#e7b9c2", edge: "#c98b96" }, // dusty rose
-  { fill: "#ddd0e4", edge: "#b8a8c8" }, // soft lavender
+  { fill: "#e8c4cc", edge: "#c98b96" }, // deeper blush
+  { fill: "#b8c8a4", edge: "#8fa87a" }, // deeper sage
+  { fill: "#d4a0ac", edge: "#b07080" }, // dusty rose
+  { fill: "#c4b0d0", edge: "#9a88b0" }, // deeper lavender
+  { fill: "#ddd0c4", edge: "#b8a898" }, // warm ivory
 ];
 let butterflyTextures = [];
 let heartTextures = [];
 
 function buildHeartTextures() {
   const S = 120;
-  const fills = ["#e7b9c2", "#c98b96", "#f5e2e6", "#a8616f"];
+  const fills = ["#d4a0ac", "#b07080", "#e8c4cc", "#9a6878"];
   return fills.map((fill) => {
     const c = document.createElement("canvas");
     c.width = S; c.height = S;
@@ -248,13 +248,221 @@ function revealHero() {
         if (window.ScrollTrigger) ScrollTrigger.refresh();
         fitHeroContent();
         showScrollPrompt();
+        scheduleHeroButterfly();
       },
     });
   } else {
     fitHeroContent();
     showScrollPrompt();
+    scheduleHeroButterfly();
   }
 }
+
+/* ============================================================
+   HERO BUTTERFLY — loops naturally around names, lands near Daniya
+   ============================================================ */
+let heroButterflyStarted = false;
+
+function heroButterflySize(ovalWidth) {
+  return Math.min(52, Math.max(36, ovalWidth * 0.058));
+}
+
+function getHeroButterflyLayout() {
+  const oval = document.querySelector(".hero__oval");
+  const names = document.querySelector(".hero__names");
+  const partner2 = names?.querySelector('[data-field="partner2"]');
+  if (!oval || !names) return null;
+
+  const o = oval.getBoundingClientRect();
+  const n = names.getBoundingClientRect();
+  const anchor = partner2?.getBoundingClientRect() || n;
+  const bflyW = heroButterflySize(o.width);
+  const bflyH = bflyW * (168 / 200);
+
+  return {
+    bflyW,
+    bflyH,
+    ovalW: o.width,
+    ovalH: o.height,
+    names: {
+      left: n.left - o.left,
+      top: n.top - o.top,
+      right: n.right - o.left,
+      bottom: n.bottom - o.top,
+      width: n.width,
+      height: n.height,
+    },
+    perch: {
+      x: anchor.right - o.left - bflyW * 0.55,
+      y: anchor.bottom - o.top - bflyW * 0.2,
+      rotation: 12,
+      scale: 1,
+    },
+  };
+}
+
+function getHeroButterflyPerch() {
+  return getHeroButterflyLayout()?.perch ?? null;
+}
+
+function enrichFlightPoints(points) {
+  return points.map((point, i) => {
+    if (point.rotation != null) return point;
+    const prev = points[Math.max(0, i - 1)];
+    const next = points[Math.min(points.length - 1, i + 1)];
+    const dx = next.x - prev.x;
+    const dy = next.y - prev.y;
+    const wobble = Math.sin(i * 0.85) * 2;
+    return {
+      ...point,
+      x: point.x + wobble * 0.25,
+      y: point.y + wobble * 0.35,
+      rotation: (Math.atan2(dy, dx) * 180) / Math.PI + 88,
+      scale: 0.92 + (i % 3) * 0.03,
+    };
+  });
+}
+
+function smoothFlightPath(waypoints, stepsBetween = 3) {
+  if (waypoints.length < 2) return enrichFlightPoints(waypoints);
+  const smooth = [];
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const a = waypoints[i];
+    const b = waypoints[i + 1];
+    for (let s = 0; s < stepsBetween; s++) {
+      const t = s / stepsBetween;
+      const ease = t * t * (3 - 2 * t);
+      smooth.push({
+        x: a.x + (b.x - a.x) * ease,
+        y: a.y + (b.y - a.y) * ease,
+      });
+    }
+  }
+  smooth.push(waypoints[waypoints.length - 1]);
+  return enrichFlightPoints(smooth);
+}
+
+function buildHeroNaturalPath(layout) {
+  const { names, bflyW, bflyH, perch, ovalW } = layout;
+  const hw = bflyW * 0.5;
+  const hh = bflyH * 0.58;
+  const gap = Math.max(bflyW * 0.72, 12);
+  const centerX = (names.left + names.right) / 2 - hw;
+  const topLane = names.top - gap - hh;
+  const leftLane = names.left - gap - hw;
+  const rightLane = names.right + gap - hw;
+  const shoulderY = names.top + names.height * 0.28 - hh;
+  const waistY = names.bottom + gap * 0.25 - hh;
+
+  const waypoints = [
+    { x: ovalW * 1.08, y: topLane - gap * 0.8 },
+    { x: rightLane + gap * 0.85, y: topLane - gap * 0.35 },
+    { x: rightLane, y: topLane },
+    { x: centerX, y: topLane - gap * 0.2 },
+    { x: leftLane, y: topLane },
+    { x: leftLane - gap * 0.5, y: shoulderY },
+    { x: leftLane, y: waistY },
+    { x: centerX, y: topLane + gap * 0.1 },
+    { x: rightLane, y: shoulderY },
+    { x: rightLane + gap * 0.35, y: waistY },
+    { x: perch.x + 16, y: perch.y - 18 },
+    { x: perch.x, y: perch.y, rotation: perch.rotation, scale: perch.scale },
+  ];
+
+  return smoothFlightPath(waypoints, 4);
+}
+
+function flightSegmentDuration(a, b) {
+  const dist = Math.hypot(b.x - a.x, b.y - a.y);
+  return Math.max(0.2, Math.min(0.58, dist / 165));
+}
+
+function perchHeroButterfly() {
+  const bfly = document.getElementById("heroBfly");
+  const perch = getHeroButterflyPerch();
+  if (!bfly || !perch) return;
+
+  bfly.classList.add("is-visible", "is-perched");
+  bfly.classList.remove("is-flying");
+  bfly.style.opacity = "1";
+
+  if (window.gsap) {
+    gsap.set(bfly, {
+      x: perch.x, y: perch.y, rotation: perch.rotation, scale: perch.scale, opacity: 1,
+    });
+  } else {
+    bfly.style.transform = `translate(${perch.x}px, ${perch.y}px) rotate(${perch.rotation}deg) scale(${perch.scale})`;
+    bfly.style.opacity = "1";
+  }
+}
+
+function flyHeroButterfly() {
+  if (heroButterflyStarted) return;
+  const bfly = document.getElementById("heroBfly");
+  const oval = document.querySelector(".hero__oval");
+  const layout = getHeroButterflyLayout();
+  if (!bfly || !oval || !layout) return;
+
+  const { perch } = layout;
+  heroButterflyStarted = true;
+  bfly.classList.add("is-visible");
+
+  if (reducedMotion || !window.gsap) {
+    perchHeroButterfly();
+    return;
+  }
+
+  const flightPath = buildHeroNaturalPath(layout);
+  const entry = flightPath[0];
+
+  gsap.set(bfly, {
+    x: entry.x,
+    y: entry.y,
+    rotation: entry.rotation ?? -28,
+    scale: 0.82,
+    opacity: 0,
+  });
+  bfly.classList.add("is-flying");
+
+  const tl = gsap.timeline({ delay: 0.75 });
+  tl.to(bfly, { opacity: 1, duration: 0.55, ease: "sine.out" })
+    .add(() => bfly.classList.add("is-circling"), 0.35);
+
+  let prev = entry;
+  flightPath.slice(1).forEach((point, i) => {
+    const isLanding = i === flightPath.length - 2;
+    tl.to(bfly, {
+      x: point.x,
+      y: point.y,
+      rotation: point.rotation,
+      scale: point.scale,
+      duration: isLanding ? 1.05 : flightSegmentDuration(prev, point),
+      ease: isLanding ? "power2.out" : "sine.inOut",
+    });
+    prev = point;
+  });
+
+  tl.add(() => {
+    bfly.classList.remove("is-circling", "is-flying");
+    bfly.classList.add("is-perched");
+  });
+}
+
+function scheduleHeroButterfly() {
+  if (heroButterflyStarted) return;
+  const run = () => flyHeroButterfly();
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(() => setTimeout(run, 400));
+  } else {
+    setTimeout(run, 900);
+  }
+}
+
+window.addEventListener("resize", () => {
+  const bfly = document.getElementById("heroBfly");
+  if (!bfly?.classList.contains("is-perched")) return;
+  perchHeroButterfly();
+});
 
 /* ============================================================
    SCROLL PROMPT — appears after intro, hides on first scroll
@@ -333,7 +541,7 @@ function initScrollPrompt() {
   window.addEventListener("touchstart", onTouchDismiss, { passive: true });
   window.addEventListener("touchmove", onTouchDismiss, { passive: true });
 
-  prompt.querySelector(".scroll-cue")?.addEventListener("click", dismissScrollPrompt);
+  prompt.querySelector(".scroll-prompt__link")?.addEventListener("click", dismissScrollPrompt);
 }
 
 /* ============================================================
@@ -346,7 +554,7 @@ function fitHeroContent() {
   if (!oval || !inner || !names) return;
 
   function fit() {
-    const maxH = oval.clientHeight * 0.58;
+    const maxH = oval.clientHeight * 0.62;
     const maxW = oval.clientWidth * 0.4;
     const innerH = names.scrollHeight;
     const innerW = names.scrollWidth;
@@ -883,8 +1091,8 @@ function initIntro() {
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     cx = W / 2; cy = H * 0.44;
-    A = Math.min(W * 0.38, 420); B = Math.min(H * 0.36, 360);
-    washRadius = Math.max(A, B) * 1.45;
+    A = Math.min(W * 0.27, 280); B = Math.min(H * 0.24, 240);
+    washRadius = Math.max(A, B) * 1.28;
     washGradient = null;
   }
 
@@ -901,9 +1109,9 @@ function initIntro() {
   }
 
   const OVAL_RINGS = [
-    { aScale: 0.88, bScale: 0.88, weight: 0.32 },
-    { aScale: 1.0, bScale: 1.0, weight: 0.44 },
-    { aScale: 1.14, bScale: 1.1, weight: 0.24 },
+    { aScale: 0.78, bScale: 0.78, weight: 0.34 },
+    { aScale: 0.9, bScale: 0.9, weight: 0.46 },
+    { aScale: 1.0, bScale: 0.98, weight: 0.2 },
   ];
 
   function makeParticles(count) {
@@ -915,15 +1123,15 @@ function initIntro() {
       const ringCount = Math.max(1, Math.round(ovalCount * ring.weight));
       for (let j = 0; j < ringCount && ovalIdx < ovalCount; j++, ovalIdx++) {
         const ang = (j / ringCount) * Math.PI * 2 + ring.aScale * 0.12;
-        const tx = cx + Math.cos(ang) * (A * ring.aScale + rand(-6, 6));
-        const ty = cy + Math.sin(ang) * (B * ring.bScale + rand(-5, 5));
+        const tx = cx + Math.cos(ang) * (A * ring.aScale + rand(-3, 3));
+        const ty = cy + Math.sin(ang) * (B * ring.bScale + rand(-3, 3));
         const depth = rand(0.65, 1);
         const isHeart = Math.random() < 0.12;
         const p = {
           x: cx + rand(-14, 14), y: cy + rand(-10, 10), tx, ty,
           isOval: true, depth, ang,
           kind: isHeart ? "heart" : "butterfly",
-          size: rand(28, 46) * (0.72 + 0.28 * depth) * (isHeart ? 0.82 : 1),
+          size: rand(24, 40) * (0.72 + 0.28 * depth) * (isHeart ? 0.82 : 1),
           alpha: 0.62 + 0.38 * depth,
           rot: ang + Math.PI / 2 + rand(-0.2, 0.2),
           targetRot: ang + Math.PI / 2 + rand(-0.15, 0.15),
@@ -936,7 +1144,7 @@ function initIntro() {
             ? (Math.random() * heartTextures.length) | 0
             : (Math.random() * butterflyTextures.length) | 0,
           driftA: ang + rand(-0.4, 0.4),
-          driftR: rand(4, 10) * depth,
+          driftR: rand(2, 6) * depth,
           driftS: rand(0.45, 0.95),
           bvx: 0, bvy: 0, dvx: 0, dvy: 0,
         };
@@ -949,7 +1157,7 @@ function initIntro() {
 
     for (let i = ovalIdx; i < count; i++) {
       const ang = rand(0, Math.PI * 2);
-      const dist = rand(1.22, 1.55);
+      const dist = rand(1.05, 1.22);
       const tx = cx + Math.cos(ang) * A * dist;
       const ty = cy + Math.sin(ang) * B * dist;
       const depth = rand(0.35, 0.6);
@@ -990,7 +1198,7 @@ function initIntro() {
       ctx.strokeStyle = "rgba(231, 185, 194, 0.45)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, A * 1.02, B * 1.02, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, A * 0.96, B * 0.96, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
@@ -1158,9 +1366,8 @@ function initIntro() {
         curtains.classList.add("is-visible", "is-spotlit", "is-valance-down", "is-open", "is-blooming");
       }
       if (window.gsap && curtainLeft && curtainRight) {
-        gsap.set([curtainLeft, curtainRight], { transformPerspective: 1600, force3D: true });
-        gsap.set(curtainLeft, { xPercent: -108, rotateY: 18, scaleX: 0.96, z: 40 });
-        gsap.set(curtainRight, { xPercent: 108, rotateY: -18, scaleX: 0.96, z: 40 });
+        gsap.set(curtainLeft, { transformOrigin: "100% 0%", x: -window.innerWidth * 0.54, rotation: -7, skewY: 5, scaleY: 1.04, force3D: true });
+        gsap.set(curtainRight, { transformOrigin: "0% 0%", x: window.innerWidth * 0.54, rotation: 7, skewY: -5, scaleY: 1.04, force3D: true });
       }
       if (brightWash) brightWash.style.opacity = "1";
       if (curtainBloom) {
@@ -1173,16 +1380,57 @@ function initIntro() {
     }
 
     gsap.config({ force3D: true });
-    if (curtainLeft && curtainRight) {
-      gsap.set(curtainLeft, { transformPerspective: 1600, force3D: true, xPercent: 0, rotateY: 2, z: 0 });
-      gsap.set(curtainRight, { transformPerspective: 1600, force3D: true, xPercent: 0, rotateY: -2, z: 0 });
-    }
+    const resetCurtainPanel = (panel, side) => {
+      const isLeft = side === "left";
+      gsap.set(panel, {
+        transformOrigin: isLeft ? "100% 0%" : "0% 0%",
+        x: 0, rotation: 0, skewY: 0, scaleY: 1, force3D: true,
+      });
+      panel.querySelectorAll(".curtain__cloth, .curtain__pleats").forEach((el) => {
+        gsap.set(el, { x: 0, skewY: 0, rotation: 0, transformOrigin: isLeft ? "100% 0%" : "0% 0%" });
+      });
+    };
+    if (curtainLeft) resetCurtainPanel(curtainLeft, "left");
+    if (curtainRight) resetCurtainPanel(curtainRight, "right");
+
+    const drapeCurtain = (panel, side, tl, start, stagger = 0) => {
+      const isLeft = side === "left";
+      const origin = isLeft ? "100% 0%" : "0% 0%";
+      const xEnd = isLeft ? -window.innerWidth * 0.54 : window.innerWidth * 0.54;
+      tl.to(panel, {
+        x: xEnd,
+        rotation: isLeft ? -7 : 7,
+        skewY: isLeft ? 5 : -5,
+        scaleY: 1.05,
+        transformOrigin: origin,
+        duration: 4.4,
+        ease: "power2.inOut",
+        force3D: true,
+      }, start + stagger);
+      const cloth = panel.querySelector(".curtain__cloth");
+      const pleats = panel.querySelector(".curtain__pleats");
+      if (cloth) {
+        tl.to(cloth, {
+          skewY: isLeft ? 11 : -11,
+          transformOrigin: origin,
+          duration: 4.4,
+          ease: "power2.inOut",
+        }, start + stagger);
+      }
+      if (pleats) {
+        tl.to(pleats, {
+          x: isLeft ? "-7%" : "7%",
+          skewY: isLeft ? 4 : -4,
+          duration: 4.4,
+          ease: "power2.inOut",
+        }, start + stagger + 0.1);
+      }
+    };
     if (curtainBloom) gsap.set(curtainBloom, { xPercent: -50, yPercent: -50, scale: 0, opacity: 0 });
     if (brightWash) gsap.set(brightWash, { opacity: 0 });
     if (curtainMist) gsap.set(curtainMist, { opacity: 0 });
     if (volumetricGlow) gsap.set(volumetricGlow, { opacity: 0 });
     if (curtainSpotlight) gsap.set(curtainSpotlight, { xPercent: -50, yPercent: -50, scale: 0.5, opacity: 0 });
-
     const tl = gsap.timeline({ defaults: { ease: "power1.inOut" } });
 
     // 1) Seal glows warmly
@@ -1241,10 +1489,10 @@ function initIntro() {
     tl.call(() => { if (curtains) curtains.classList.add("is-valance-down"); }, null, 4.7);
     if (curtainLeft && curtainRight) {
       tl.to(curtainLeft, {
-        xPercent: -3, rotateY: 5, scaleX: 1.025, duration: 0.65, ease: "sine.inOut",
+        x: -10, skewY: 2, scaleY: 1.01, duration: 0.6, ease: "sine.inOut", transformOrigin: "100% 0%",
       }, 5.35);
       tl.to(curtainRight, {
-        xPercent: 3, rotateY: -5, scaleX: 1.025, duration: 0.65, ease: "sine.inOut",
+        x: 10, skewY: -2, scaleY: 1.01, duration: 0.6, ease: "sine.inOut", transformOrigin: "0% 0%",
       }, 5.35);
     }
     tl.call(() => {
@@ -1253,28 +1501,8 @@ function initIntro() {
       CinematicAudio.swellMusic(0.42, 3);
       runCanvasIntro();
     }, null, 5.95);
-    if (curtainLeft && curtainRight) {
-      tl.to(curtainLeft, {
-        xPercent: -108,
-        rotateY: 20,
-        scaleX: 0.95,
-        scaleY: 1.02,
-        z: 55,
-        duration: 3.6,
-        ease: "power1.inOut",
-        force3D: true,
-      }, 5.95);
-      tl.to(curtainRight, {
-        xPercent: 108,
-        rotateY: -20,
-        scaleX: 0.95,
-        scaleY: 1.02,
-        z: 55,
-        duration: 3.6,
-        ease: "power1.inOut",
-        force3D: true,
-      }, 6.08);
-    }
+    if (curtainLeft) drapeCurtain(curtainLeft, "left", tl, 5.95, 0);
+    if (curtainRight) drapeCurtain(curtainRight, "right", tl, 5.95, 0.12);
     if (brightWash) tl.to(brightWash, { opacity: 1, duration: 3, ease: "sine.out" }, 5.95);
     if (curtainBloom) tl.to(curtainBloom, { scale: 1, opacity: 0.95, duration: 3, ease: "sine.out" }, 5.95);
     if (curtainMist) tl.to(curtainMist, { opacity: 1, duration: 2.8, ease: "sine.out" }, 6.15);

@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Great+Vibes&family=Parisienne&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=curtain-seal4" />
+  <link rel="stylesheet" href="styles.css?v=cloth-curtains1" />
 </head>
 <body class="intro-active">
 
@@ -104,10 +104,24 @@
     <!-- Royal silk curtains -->
     <svg class="curtain-filters" aria-hidden="true" width="0" height="0">
       <defs>
-        <filter id="velvetNoise" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" result="noise" />
-          <feColorMatrix type="saturate" values="0" in="noise" result="mono" />
-          <feBlend in="SourceGraphic" in2="mono" mode="multiply" />
+        <filter id="velvetNoise" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.55 0.08" numOctaves="4" seed="8" stitchTiles="stitch" result="noise" />
+          <feColorMatrix type="saturate" values="0.15" in="noise" result="grain" />
+          <feComponentTransfer in="grain" result="softGrain">
+            <feFuncA type="table" tableValues="0 0.22 0.38" />
+          </feComponentTransfer>
+          <feBlend in="SourceGraphic" in2="softGrain" mode="multiply" />
+        </filter>
+        <filter id="curtainDepth" x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur" />
+          <feOffset dx="2" dy="0" result="offsetBlur" />
+          <feComponentTransfer in="offsetBlur" result="shadow">
+            <feFuncA type="linear" slope="0.35" />
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="shadow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
       </defs>
     </svg>
@@ -119,31 +133,37 @@
       <div class="volumetric-glow" id="volumetricGlow" aria-hidden="true"></div>
       <div class="curtain-backdrop" aria-hidden="true"></div>
       <div class="curtain-bright-wash" aria-hidden="true"></div>
+      <div class="curtain-rod" aria-hidden="true"></div>
       <div class="curtain-valance" id="curtainValance" aria-hidden="true">
         <div class="curtain-valance__body"></div>
-        <div class="curtain-valance__fringe" aria-hidden="true"></div>
+        <div class="curtain-valance__fold" aria-hidden="true"></div>
       </div>
+      <div class="curtain-meet-shadow" aria-hidden="true"></div>
       <div class="curtain curtain--left" id="curtainLeft">
         <div class="curtain__base"></div>
-        <div class="curtain__silk"></div>
+        <div class="curtain__cloth"></div>
+        <div class="curtain__weave" aria-hidden="true"></div>
+        <div class="curtain__texture" aria-hidden="true"></div>
+        <div class="curtain__depth" aria-hidden="true"></div>
         <div class="curtain__pleats" aria-hidden="true"></div>
         <div class="curtain__folds"></div>
         <div class="curtain__swag" aria-hidden="true"></div>
         <div class="curtain__sheen"></div>
         <div class="curtain__lining" aria-hidden="true"></div>
-        <div class="curtain__trim"></div>
         <div class="curtain__edge-glow"></div>
         <div class="curtain__hem" aria-hidden="true"></div>
       </div>
       <div class="curtain curtain--right" id="curtainRight">
         <div class="curtain__base"></div>
-        <div class="curtain__silk"></div>
+        <div class="curtain__cloth"></div>
+        <div class="curtain__weave" aria-hidden="true"></div>
+        <div class="curtain__texture" aria-hidden="true"></div>
+        <div class="curtain__depth" aria-hidden="true"></div>
         <div class="curtain__pleats" aria-hidden="true"></div>
         <div class="curtain__folds"></div>
         <div class="curtain__swag" aria-hidden="true"></div>
         <div class="curtain__sheen"></div>
         <div class="curtain__lining" aria-hidden="true"></div>
-        <div class="curtain__trim"></div>
         <div class="curtain__edge-glow"></div>
         <div class="curtain__hem" aria-hidden="true"></div>
       </div>
@@ -156,9 +176,9 @@
     <div class="intro-names" id="introNames" aria-hidden="true">
       <p class="intro-names__eyebrow">With the blessings of Allah</p>
       <h2 class="intro-names__title">
-        <span class="intro-names__name" data-field="partner1">Sadaat</span>
-        <span class="intro-names__weds">weds</span>
-        <span class="intro-names__name" data-field="partner2">Daniya</span>
+        <span class="royal-shine" data-field="partner1">Sadaat</span>
+        <span class="intro-names__amp">&amp;</span>
+        <span class="royal-shine" data-field="partner2">Daniya</span>
       </h2>
     </div>
   </div>
@@ -194,8 +214,91 @@
         <div class="hero__oval reveal">
           <div class="hero__inner">
             <h1 class="hero__names">
-              <span class="royal-shine" data-field="partner1">Sadaat</span><span class="hero__amp">&amp;</span><span class="royal-shine" data-field="partner2">Daniya</span>
+              <span class="royal-shine" data-field="partner1">Sadaat</span>
+              <span class="hero__amp">&amp;</span>
+              <span class="royal-shine" data-field="partner2">Daniya</span>
             </h1>
+          </div>
+          <div class="hero__butterfly" id="heroButterfly" aria-hidden="true">
+            <div class="hero-bfly" id="heroBfly">
+              <svg class="hero-bfly__art" viewBox="0 0 200 168" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="hbULa" x1="100" y1="82" x2="28" y2="24" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffe8f0"/><stop offset="42%" stop-color="#f8b0c4"/><stop offset="100%" stop-color="#d85878"/>
+                  </linearGradient>
+                  <linearGradient id="hbULb" x1="100" y1="82" x2="18" y2="52" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffdce8"/><stop offset="50%" stop-color="#f090a8"/><stop offset="100%" stop-color="#c84868"/>
+                  </linearGradient>
+                  <linearGradient id="hbULc" x1="100" y1="82" x2="52" y2="68" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#fff0f4"/><stop offset="100%" stop-color="#e87898"/>
+                  </linearGradient>
+                  <linearGradient id="hbURa" x1="100" y1="82" x2="172" y2="24" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffe8f0"/><stop offset="42%" stop-color="#f8b0c4"/><stop offset="100%" stop-color="#d85878"/>
+                  </linearGradient>
+                  <linearGradient id="hbURb" x1="100" y1="82" x2="182" y2="52" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffdce8"/><stop offset="50%" stop-color="#f090a8"/><stop offset="100%" stop-color="#c84868"/>
+                  </linearGradient>
+                  <linearGradient id="hbURc" x1="100" y1="82" x2="148" y2="68" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#fff0f4"/><stop offset="100%" stop-color="#e87898"/>
+                  </linearGradient>
+                  <linearGradient id="hbLLa" x1="100" y1="88" x2="24" y2="128" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffe0ea"/><stop offset="55%" stop-color="#f0a0b8"/><stop offset="100%" stop-color="#d05070"/>
+                  </linearGradient>
+                  <linearGradient id="hbLLb" x1="100" y1="88" x2="58" y2="148" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffd8e4"/><stop offset="100%" stop-color="#e07090"/>
+                  </linearGradient>
+                  <linearGradient id="hbLRa" x1="100" y1="88" x2="176" y2="128" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffe0ea"/><stop offset="55%" stop-color="#f0a0b8"/><stop offset="100%" stop-color="#d05070"/>
+                  </linearGradient>
+                  <linearGradient id="hbLRb" x1="100" y1="88" x2="142" y2="148" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#ffd8e4"/><stop offset="100%" stop-color="#e07090"/>
+                  </linearGradient>
+                </defs>
+                <g class="hero-bfly__wing hero-bfly__wing--ul">
+                  <path d="M100 80 L38 30 C22 22 14 30 18 46 C24 62 48 74 72 78 L100 80Z" fill="url(#hbULa)" stroke="#1a1420" stroke-width="2.8" stroke-linejoin="round"/>
+                  <path d="M100 80 L18 46 C30 38 52 36 72 54 L100 80Z" fill="url(#hbULb)" stroke="#1a1420" stroke-width="2.4" stroke-linejoin="round"/>
+                  <path d="M100 80 L72 54 L72 78 L100 80Z" fill="url(#hbULc)" stroke="#1a1420" stroke-width="2.2" stroke-linejoin="round"/>
+                  <path d="M100 80 L38 30 M100 80 L18 46 M100 80 L72 54" stroke="#1a1420" stroke-width="2.6" stroke-linecap="round"/>
+                  <circle cx="34" cy="36" r="3.2" fill="#f8a8c0" stroke="#1a1420" stroke-width="1.4"/>
+                  <circle cx="24" cy="48" r="2.6" fill="#e87898" stroke="#1a1420" stroke-width="1.2"/>
+                  <circle cx="44" cy="28" r="2.4" fill="#ffd0dc" stroke="#1a1420" stroke-width="1.2"/>
+                  <ellipse cx="16" cy="40" rx="3.5" ry="2.2" fill="#d85878" stroke="#1a1420" stroke-width="1.2"/>
+                </g>
+                <g class="hero-bfly__wing hero-bfly__wing--ur">
+                  <path d="M100 80 L162 30 C178 22 186 30 182 46 C176 62 152 74 128 78 L100 80Z" fill="url(#hbURa)" stroke="#1a1420" stroke-width="2.8" stroke-linejoin="round"/>
+                  <path d="M100 80 L182 46 C170 38 148 36 128 54 L100 80Z" fill="url(#hbURb)" stroke="#1a1420" stroke-width="2.4" stroke-linejoin="round"/>
+                  <path d="M100 80 L128 54 L128 78 L100 80Z" fill="url(#hbURc)" stroke="#1a1420" stroke-width="2.2" stroke-linejoin="round"/>
+                  <path d="M100 80 L162 30 M100 80 L182 46 M100 80 L128 54" stroke="#1a1420" stroke-width="2.6" stroke-linecap="round"/>
+                  <circle cx="166" cy="36" r="3.2" fill="#f8a8c0" stroke="#1a1420" stroke-width="1.4"/>
+                  <circle cx="176" cy="48" r="2.6" fill="#e87898" stroke="#1a1420" stroke-width="1.2"/>
+                  <circle cx="156" cy="28" r="2.4" fill="#ffd0dc" stroke="#1a1420" stroke-width="1.2"/>
+                  <ellipse cx="184" cy="40" rx="3.5" ry="2.2" fill="#d85878" stroke="#1a1420" stroke-width="1.2"/>
+                </g>
+                <g class="hero-bfly__wing hero-bfly__wing--ll">
+                  <path d="M100 86 L52 108 C34 118 30 132 42 142 C54 150 74 144 88 128 L100 86Z" fill="url(#hbLLa)" stroke="#1a1420" stroke-width="2.6" stroke-linejoin="round"/>
+                  <path d="M100 86 L42 142 C48 124 68 112 88 118 L100 86Z" fill="url(#hbLLb)" stroke="#1a1420" stroke-width="2.2" stroke-linejoin="round"/>
+                  <path d="M100 86 L88 118 M100 86 L52 108" stroke="#1a1420" stroke-width="2.4" stroke-linecap="round"/>
+                  <circle cx="46" cy="134" r="2.4" fill="#f0a0b8" stroke="#1a1420" stroke-width="1.2"/>
+                  <circle cx="58" cy="146" r="2" fill="#e07090" stroke="#1a1420" stroke-width="1"/>
+                  <circle cx="36" cy="122" r="2.2" fill="#ffd8e4" stroke="#1a1420" stroke-width="1.1"/>
+                </g>
+                <g class="hero-bfly__wing hero-bfly__wing--lr">
+                  <path d="M100 86 L148 108 C166 118 170 132 158 142 C146 150 126 144 112 128 L100 86Z" fill="url(#hbLRa)" stroke="#1a1420" stroke-width="2.6" stroke-linejoin="round"/>
+                  <path d="M100 86 L158 142 C152 124 132 112 112 118 L100 86Z" fill="url(#hbLRb)" stroke="#1a1420" stroke-width="2.2" stroke-linejoin="round"/>
+                  <path d="M100 86 L112 118 M100 86 L148 108" stroke="#1a1420" stroke-width="2.4" stroke-linecap="round"/>
+                  <circle cx="154" cy="134" r="2.4" fill="#f0a0b8" stroke="#1a1420" stroke-width="1.2"/>
+                  <circle cx="142" cy="146" r="2" fill="#e07090" stroke="#1a1420" stroke-width="1"/>
+                  <circle cx="164" cy="122" r="2.2" fill="#ffd8e4" stroke="#1a1420" stroke-width="1.1"/>
+                </g>
+                <ellipse cx="100" cy="86" rx="5" ry="22" fill="#1a1420"/>
+                <circle cx="100" cy="58" r="6" fill="#1a1420"/>
+                <path d="M96 54 Q82 38 74 32" stroke="#1a1420" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+                <path d="M104 54 Q118 38 126 32" stroke="#1a1420" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+                <circle cx="74" cy="32" r="3.5" fill="#1a1420"/>
+                <circle cx="126" cy="32" r="3.5" fill="#1a1420"/>
+              </svg>
+              <span class="hero-bfly__shadow" aria-hidden="true"></span>
+            </div>
           </div>
         </div>
         <p class="hero__script reveal">are getting married</p>
@@ -203,9 +306,9 @@
       </div>
       <p class="hero__sub reveal">Together with their families, they request the honour of your presence at the celebration of their wedding — <span class="hero__insha">InshaAllah</span>.</p>
       <div class="scroll-prompt" id="scrollPrompt" aria-hidden="true">
-        <span class="scroll-prompt__text">Scroll to explore</span>
-        <a href="#countdown" class="scroll-cue" aria-label="Scroll down">
-          <span class="scroll-cue__chevrons" aria-hidden="true"></span>
+        <a href="#countdown" class="scroll-prompt__link" aria-label="Scroll to explore">
+          <span class="scroll-prompt__text">Scroll to explore</span>
+          <span class="scroll-prompt__arrow" aria-hidden="true"></span>
         </a>
       </div>
     </section>
@@ -357,6 +460,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
-  <script src="script.js?v=curtain-seal4" defer></script>
+  <script src="script.js?v=cloth-curtains1" defer></script>
 </body>
 </html>
