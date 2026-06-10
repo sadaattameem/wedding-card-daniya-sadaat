@@ -1793,7 +1793,7 @@ async function submitRsvpResponse(data) {
     });
     const json = await res.json();
     if (!res.ok || !json.success) throw new Error("sheet");
-    return;
+    return json;
   }
 
   if (WEDDING.formspreeEndpoint) {
@@ -1815,6 +1815,15 @@ async function submitRsvpResponse(data) {
   window.location.href = `mailto:${WEDDING.contactEmail}?subject=${subject}&body=${body}`;
 }
 
+let rsvpSubmitting = false;
+
+function setRsvpFormBusy(form, busy) {
+  rsvpSubmitting = busy;
+  form.querySelectorAll("button, input, textarea, select").forEach((el) => {
+    el.disabled = busy;
+  });
+}
+
 function initRSVP() {
   const form = document.getElementById("rsvpForm");
   const status = document.getElementById("rsvpStatus");
@@ -1827,6 +1836,7 @@ function initRSVP() {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (rsvpSubmitting) return;
     status.className = "rsvp-status";
     status.textContent = "";
 
@@ -1848,16 +1858,24 @@ function initRSVP() {
     }
 
     const data = Object.fromEntries(new FormData(form).entries());
+    setRsvpFormBusy(form, true);
     try {
-      await submitRsvpResponse(data);
+      const result = await submitRsvpResponse(data);
       status.classList.add("is-success");
-      status.textContent = data.attending === "no"
-        ? "Thank you for letting us know — you will be dearly missed."
-        : "Thank you! We can't wait to celebrate with you, InshaAllah.";
-      if (data.attending !== "no") flyButterfliesAcross();
+      if (result?.duplicate) {
+        status.textContent = "Your RSVP is already saved — thank you, InshaAllah.";
+      } else if (result?.updated) {
+        status.textContent = "Your RSVP has been updated — thank you, InshaAllah.";
+      } else {
+        status.textContent = data.attending === "no"
+          ? "Thank you for letting us know — you will be dearly missed."
+          : "Thank you! We can't wait to celebrate with you, InshaAllah.";
+      }
+      if (data.attending !== "no" && !result?.duplicate) flyButterfliesAcross();
       form.reset();
       attending.value = "";
     } catch (err) {
+      setRsvpFormBusy(form, false);
       status.classList.add("is-error");
       status.textContent = "Something went wrong — please try again or email us directly.";
     }

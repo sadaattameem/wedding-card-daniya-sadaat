@@ -22,4 +22,13 @@ RSVP → Google Sheet setup (one time, ~2 minutes)
 
 8. Push the site to GitHub Pages again.
 
+When you change rsvp-to-sheet.gs later:
+- Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy
+- The Web app URL stays the same.
+
+Duplicate protection (in the script):
+- Blocks double-clicks within 2 minutes for the same email
+- Blocks identical submissions for the same email
+- Updates the existing row if the same email submits again later with changes
+
 Optional: In Apps Script, run testAppend once to verify a row appears in the sheet.
