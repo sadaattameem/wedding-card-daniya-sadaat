@@ -24,16 +24,15 @@ const WEDDING = {
   "dresscode-note": "Traditional & modest elegance kindly requested",
   "rsvp-deadline": "Kindly respond by July 1, 2026",
 
-  // RSVP delivery (free, no server):
-  //   1) Create a free form at https://formspree.io
-  //   2) Paste the endpoint below (e.g. https://formspree.io/f/abcdwxyz)
-  //   Leave empty ("") to use a mailto: fallback instead.
+  // RSVP → Google Sheet (recommended): deploy google-apps-script/rsvp-to-sheet.gs
+  // and paste your Web app URL below (ends with /exec).
+  rsvpSheetEndpoint: "https://script.google.com/macros/s/AKfycbw5PVJ_NskpyMpBDip1FhCc4yeMblg8ix2aJ1a_uKS5EY_hAlch5snkTAHA7xH5wESU/exec",
+  // Optional Formspree fallback if rsvpSheetEndpoint is empty.
   formspreeEndpoint: "",
   contactEmail: "you@example.com",
 
-  // Background music — add your legally purchased MP3 to this path:
-  musicFile: "music/i-found-love.mp3",
-  musicTitle: "Perfect — Ed Sheeran",
+  musicFile: "music/wedding-song.mp4",
+  musicTitle: "Our song",
 };
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1605,20 +1604,21 @@ function initPetals() {
    BACKGROUND MUSIC (your MP3) + CINEMATIC SFX
    ============================================================ */
 const BackgroundMusic = {
-  el: null, ready: false, playing: false, maxVol: 0.38, swellRaf: 0,
+  el: null, ready: false, playing: false, maxVol: 0.16, swellRaf: 0,
 
   init() {
     this.el = document.getElementById("music");
     if (!this.el || !WEDDING.musicFile) return;
     const src = this.el.querySelector("source");
     if (src) src.src = WEDDING.musicFile;
+    this.el.volume = 0;
     this.el.load();
     this.el.addEventListener("canplaythrough", () => { this.ready = true; }, { once: true });
     this.el.addEventListener("error", () => { this.ready = false; });
   },
 
   targetVol(level) {
-    return Math.min(this.maxVol, 0.03 + level * 0.35);
+    return Math.min(this.maxVol, 0.012 + level * 0.12);
   },
 
   swell(level, durationSec = 2.4) {
@@ -1637,17 +1637,17 @@ const BackgroundMusic = {
     this.swellRaf = requestAnimationFrame(step);
   },
 
-  async play(startLevel = 0.12) {
+  async play(startLevel = 0.06) {
     if (!this.el) return false;
     this.el.volume = this.targetVol(startLevel);
     try {
       await this.el.play();
       this.playing = true;
-      if (musicBtn) musicBtn.classList.add("is-playing");
+      updateMusicButtonUI();
       return true;
     } catch (_) {
       this.playing = false;
-      if (musicBtn) musicBtn.classList.remove("is-playing");
+      updateMusicButtonUI();
       return false;
     }
   },
@@ -1657,14 +1657,24 @@ const BackgroundMusic = {
     cancelAnimationFrame(this.swellRaf);
     this.el.pause();
     this.playing = false;
-    if (musicBtn) musicBtn.classList.remove("is-playing");
+    updateMusicButtonUI();
   },
 
   toggle() {
     if (this.playing) this.pause();
-    else this.play().then((ok) => { if (ok) this.swell(0.32, 1.8); });
+    else this.play().then((ok) => { if (ok) this.swell(0.16, 1.8); });
   },
 };
+
+function updateMusicButtonUI() {
+  if (!musicBtn) return;
+  const playing = BackgroundMusic.playing;
+  musicBtn.classList.toggle("is-playing", playing);
+  musicBtn.classList.toggle("is-muted", !playing);
+  musicBtn.setAttribute("aria-pressed", playing ? "true" : "false");
+  musicBtn.setAttribute("aria-label", playing ? "Mute music" : "Unmute music");
+  musicBtn.title = playing ? "Mute music" : "Unmute music";
+}
 
 const CinematicAudio = {
   ctx: null, master: null, sfxGain: null,
@@ -1751,20 +1761,60 @@ let musicBtn;
 function initMusic() {
   musicBtn = document.getElementById("musicToggle");
   BackgroundMusic.init();
+  updateMusicButtonUI();
   if (!musicBtn) return;
   musicBtn.addEventListener("click", () => BackgroundMusic.toggle());
 }
 function startMusic() {
   CinematicAudio.init();
   CinematicAudio.resume();
-  BackgroundMusic.play(0.04).then((ok) => {
-    if (ok) BackgroundMusic.swell(0.1, 2.4);
+  BackgroundMusic.play(0.02).then((ok) => {
+    if (ok) BackgroundMusic.swell(0.08, 2.4);
   });
 }
 
 /* ============================================================
    RSVP
    ============================================================ */
+async function submitRsvpResponse(data) {
+  if (WEDDING.rsvpSheetEndpoint) {
+    const res = await fetch(WEDDING.rsvpSheetEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        name: data.name || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        attending: data.attending || "",
+        guests: data.guests || "",
+        message: data.message || "",
+        submittedAt: new Date().toISOString(),
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error("sheet");
+    return;
+  }
+
+  if (WEDDING.formspreeEndpoint) {
+    const body = new FormData();
+    Object.entries(data).forEach(([key, value]) => body.append(key, value));
+    const res = await fetch(WEDDING.formspreeEndpoint, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body,
+    });
+    if (!res.ok) throw new Error("formspree");
+    return;
+  }
+
+  const subject = encodeURIComponent(`RSVP — ${data.name}`);
+  const body = encodeURIComponent(
+    `Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone || "-"}\nAttending: ${data.attending}\nGuests: ${data.guests}\nNote: ${data.message || "-"}`
+  );
+  window.location.href = `mailto:${WEDDING.contactEmail}?subject=${subject}&body=${body}`;
+}
+
 function initRSVP() {
   const form = document.getElementById("rsvpForm");
   const status = document.getElementById("rsvpStatus");
@@ -1799,18 +1849,7 @@ function initRSVP() {
 
     const data = Object.fromEntries(new FormData(form).entries());
     try {
-      if (WEDDING.formspreeEndpoint) {
-        const res = await fetch(WEDDING.formspreeEndpoint, {
-          method: "POST", headers: { Accept: "application/json" }, body: new FormData(form),
-        });
-        if (!res.ok) throw new Error("bad response");
-      } else {
-        const subject = encodeURIComponent(`RSVP — ${data.name}`);
-        const body = encodeURIComponent(
-          `Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone || "-"}\nAttending: ${data.attending}\nGuests: ${data.guests}\nNote: ${data.message || "-"}`
-        );
-        window.location.href = `mailto:${WEDDING.contactEmail}?subject=${subject}&body=${body}`;
-      }
+      await submitRsvpResponse(data);
       status.classList.add("is-success");
       status.textContent = data.attending === "no"
         ? "Thank you for letting us know — you will be dearly missed."
@@ -2268,7 +2307,7 @@ function initIntro() {
         curtainBloom.style.opacity = "0.95";
         curtainBloom.style.transform = "translate(-50%, -50%) scale(1)";
       }
-      CinematicAudio.swellMusic(0.38, 1.5);
+      CinematicAudio.swellMusic(0.18, 1.5);
       detachIntroButterfliesFromHeadline();
       setTimeout(() => {
         runCanvasIntro();
@@ -2342,7 +2381,7 @@ function initIntro() {
     }, 1.4);
     tl.call(() => {
       spawnSealHearts();
-      CinematicAudio.swellMusic(0.2, 1.6);
+      CinematicAudio.swellMusic(0.1, 1.6);
     }, null, 1.7);
 
     // 3) Envelope gentle pulse
@@ -2369,7 +2408,7 @@ function initIntro() {
       tl.to(envBloom, { scale: 1.2, opacity: 1, duration: 2, ease: "power2.out" }, 2.9);
     }
     tl.to(stage, { scale: isMobile ? 1.04 : 1.08, z: 30, duration: 2.6, ease: "power1.out", force3D: true }, 2.6);
-    tl.call(() => CinematicAudio.swellMusic(0.28, 2.4), null, 2.9);
+    tl.call(() => CinematicAudio.swellMusic(0.14, 2.4), null, 2.9);
 
     // 5) Envelope fades — grand curtains rise into view
     tl.call(() => {
@@ -2380,7 +2419,7 @@ function initIntro() {
     // 7) Theatrical curtain sequence — spotlight, valance, tension, grand part
     tl.call(() => {
       if (curtains) curtains.classList.add("is-spotlit");
-      CinematicAudio.swellMusic(0.22, 1.4);
+      CinematicAudio.swellMusic(0.12, 1.4);
     }, null, 4.35);
     if (curtainSpotlight) {
       tl.to(curtainSpotlight, { scale: 1, opacity: 1, duration: 2, ease: "power2.out" }, 4.35);
@@ -2397,7 +2436,7 @@ function initIntro() {
     tl.call(() => {
       if (curtains) curtains.classList.add("is-open", "is-blooming");
       CinematicAudio.playWhoosh();
-      CinematicAudio.swellMusic(0.42, 3);
+      CinematicAudio.swellMusic(0.2, 3);
       runCanvasIntro();
       startIntroOrbitFlight();
     }, null, 5.95);

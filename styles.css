@@ -123,29 +123,80 @@ main, .nav, .footer { position: relative; z-index: 2; }
 
 .music-toggle {
   position: fixed;
-  left: max(clamp(14px, 3vw, 28px), env(safe-area-inset-left, 0px));
+  right: max(clamp(12px, 3vw, 24px), env(safe-area-inset-right, 0px));
   bottom: max(clamp(14px, 3vw, 28px), env(safe-area-inset-bottom, 0px));
-  z-index: 320;
-  width: 46px; height: 46px; border-radius: 50%;
-  border: 1px solid var(--line);
-  background: rgba(255, 253, 250, 0.8);
+  z-index: 420;
+  min-height: 44px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--champagne);
+  background: rgba(255, 253, 250, 0.92);
   backdrop-filter: blur(8px);
   cursor: pointer;
-  display: grid; place-items: center;
-  box-shadow: 0 8px 22px rgba(150, 120, 70, 0.16);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--champagne-dk);
+  box-shadow: 0 8px 22px rgba(150, 120, 70, 0.18);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
-.music-toggle:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(150, 120, 70, 0.26); }
-.music-toggle__bars { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
+.music-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(150, 120, 70, 0.26);
+  background: rgba(255, 253, 250, 0.98);
+}
+.music-toggle__state {
+  display: none;
+  align-items: center;
+  gap: 0.42rem;
+}
+.music-toggle.is-muted .music-toggle__state--muted,
+.music-toggle.is-playing .music-toggle__state--playing {
+  display: inline-flex;
+}
+.music-toggle__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.music-toggle__label {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+.music-toggle__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+  flex-shrink: 0;
+}
 .music-toggle__bars i {
-  width: 3px; height: 6px; border-radius: 2px;
+  width: 3px;
+  height: 6px;
+  border-radius: 2px;
   background: var(--champagne-dk);
 }
 .music-toggle.is-playing .music-toggle__bars i { animation: eq 0.9s ease-in-out infinite; }
 .music-toggle__bars i:nth-child(2) { animation-delay: 0.15s; }
 .music-toggle__bars i:nth-child(3) { animation-delay: 0.3s; }
 .music-toggle__bars i:nth-child(4) { animation-delay: 0.45s; }
-@keyframes eq { 0%, 100% { height: 5px; } 50% { height: 18px; } }
+@keyframes eq { 0%, 100% { height: 5px; } 50% { height: 16px; } }
+
+@media (max-width: 768px) {
+  .music-toggle {
+    bottom: max(12px, env(safe-area-inset-bottom, 0px) + 8px);
+    padding: 0.4rem 0.72rem;
+  }
+  .music-toggle__label {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+  }
+}
 
 /* ============================================================
    FALLING PETALS
@@ -1364,24 +1415,24 @@ body.nav-open { overflow: hidden; }
 .scroll-prompt__text {
   font-family: var(--font-body);
   font-style: italic;
-  font-size: clamp(0.82rem, 2.4vw, 1rem);
-  letter-spacing: 0.22em;
+  font-size: clamp(0.92rem, 2.8vw, 1.08rem);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink);
-  padding: 0.45rem 1.1rem;
+  padding: 0.52rem 1.25rem;
   border: 1px solid var(--champagne);
   border-radius: 999px;
-  background: rgba(255, 253, 250, 0.88);
+  background: rgba(255, 253, 250, 0.92);
   backdrop-filter: blur(6px);
-  box-shadow: 0 8px 24px rgba(150, 120, 70, 0.18);
+  box-shadow: 0 8px 24px rgba(150, 120, 70, 0.22);
   animation: hintPulse 2.2s ease-in-out infinite;
 }
 .scroll-prompt__arrow {
   display: block;
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid var(--champagne-dk);
-  border-bottom: 2px solid var(--champagne-dk);
+  width: 12px;
+  height: 12px;
+  border-right: 2.5px solid var(--champagne-dk);
+  border-bottom: 2.5px solid var(--champagne-dk);
   transform: rotate(45deg);
   animation: scrollArrow 1.6s ease-in-out infinite;
   flex-shrink: 0;
@@ -1402,25 +1453,25 @@ body.nav-open { overflow: hidden; }
     line-height: 1.55;
   }
   .scroll-prompt {
-    bottom: max(10px, env(safe-area-inset-bottom, 0px) + 6px);
-    z-index: 30;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px) + 8px);
+    z-index: 45;
   }
   .scroll-prompt__link {
     flex-direction: row;
-    gap: 0.3rem;
+    gap: 0.45rem;
   }
   .scroll-prompt__text {
-    font-size: 0.58rem;
-    letter-spacing: 0.12em;
-    padding: 0.28rem 0.62rem;
-    box-shadow: 0 3px 10px rgba(150, 120, 70, 0.12);
-    animation: none;
+    font-size: clamp(0.76rem, 2.6vw, 0.9rem);
+    letter-spacing: 0.14em;
+    padding: 0.4rem 0.9rem;
+    box-shadow: 0 4px 14px rgba(150, 120, 70, 0.18);
+    animation: hintPulse 2.2s ease-in-out infinite;
     white-space: nowrap;
   }
   .scroll-prompt__arrow {
-    width: 7px;
-    height: 7px;
-    border-width: 1.5px;
+    width: 9px;
+    height: 9px;
+    border-width: 2px;
   }
 }
 
@@ -1434,9 +1485,9 @@ body.nav-open { overflow: hidden; }
     line-height: 1.5;
   }
   .scroll-prompt__text {
-    font-size: 0.52rem;
-    letter-spacing: 0.1em;
-    padding: 0.24rem 0.52rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    padding: 0.36rem 0.78rem;
   }
 }
 
@@ -1450,12 +1501,12 @@ body.nav-open { overflow: hidden; }
     font-size: 0.76rem;
   }
   .scroll-prompt__text {
-    font-size: 0.48rem;
-    padding: 0.2rem 0.45rem;
+    font-size: 0.68rem;
+    padding: 0.32rem 0.7rem;
   }
   .scroll-prompt__arrow {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 }
 

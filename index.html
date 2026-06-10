@@ -13,7 +13,7 @@
   <meta http-equiv="Expires" content="0" />
 
   <meta property="og:title" content="Sadaat & Daniya · Wedding" />
-  <meta property="og:description" content="Together with their families, request the honour of your presence." />
+  <meta property="og:description" content="Together with our families, we request the honour of your presence." />
   <meta property="og:type" content="website" />
 
   <title>Sadaat &amp; Daniya · Wedding</title>
@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Great+Vibes&family=Parisienne&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=cloth-curtains2" />
+  <link rel="stylesheet" href="styles.css?v=music-unmute1" />
 </head>
 <body class="intro-active">
 
@@ -34,10 +34,20 @@
 
   <!-- ============ AMBIENT MUSIC ============ -->
   <audio id="music" loop preload="auto" crossorigin="anonymous">
-    <source src="music/i-found-love.mp3" type="audio/mpeg" />
+    <source src="music/wedding-song.mp4" type="audio/mp4" />
   </audio>
-  <button class="music-toggle" id="musicToggle" type="button" aria-label="Toggle background music" title="Perfect — Ed Sheeran">
-    <span class="music-toggle__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+  <button class="music-toggle is-muted" id="musicToggle" type="button" aria-label="Unmute music" aria-pressed="false" title="Unmute music">
+    <span class="music-toggle__state music-toggle__state--muted" aria-hidden="true">
+      <svg class="music-toggle__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11 5L6 9H3v6h3l5 4V5z" fill="currentColor"/>
+        <path d="M16 9l5 5M21 9l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <span class="music-toggle__label">Unmute</span>
+    </span>
+    <span class="music-toggle__state music-toggle__state--playing" aria-hidden="true">
+      <span class="music-toggle__bars"><i></i><i></i><i></i><i></i></span>
+      <span class="music-toggle__label">Music</span>
+    </span>
   </button>
 
   <!-- ============ FALLING PETALS (background) ============ -->
@@ -389,7 +399,7 @@
         <p class="hero__script reveal">are getting married</p>
         <p class="hero__date reveal"><span data-field="date-long">Saturday, July 18, 2026</span><span class="date-insha"> — InshaAllah</span></p>
       </div>
-      <p class="hero__sub reveal">Together with their families, they request the honour of your presence at the celebration of their wedding — <span class="hero__insha">InshaAllah</span>.</p>
+      <p class="hero__sub reveal">Together with our families, we request the honour of your presence at the celebration of our wedding — <span class="hero__insha">InshaAllah</span>.</p>
       <div class="scroll-prompt" id="scrollPrompt" aria-hidden="true">
         <a href="#countdown" class="scroll-prompt__link" aria-label="Scroll to explore">
           <span class="scroll-prompt__text">Scroll to explore</span>

@@ -70,9 +70,12 @@ Then open <http://localhost:8000>.
 
 Works out of the box via a `mailto:` fallback. For automatic collection, use **Formspree**:
 
-1. Create a form at <https://formspree.io>.
-2. Copy your endpoint (e.g. `https://formspree.io/f/abcdwxyz`).
-3. Paste it into `formspreeEndpoint` in `script.js`.
+1. Open your [RSVP spreadsheet](https://docs.google.com/spreadsheets/d/1hFkuDfn5MRkS8CtEd3tO5osdRb6xIzeiYyj38Nt9W2c/) → **Extensions → Apps Script**.
+2. Paste `google-apps-script/rsvp-to-sheet.gs`, save, then **Deploy → New deployment → Web app** (Execute as: **Me**, Who has access: **Anyone**).
+3. Copy the Web app URL and set `rsvpSheetEndpoint` in `script.js`.
+4. Push to GitHub Pages.
+
+Optional fallback: set `formspreeEndpoint` instead (see [Formspree](https://formspree.io)).
 
 ## Host it for free
 
