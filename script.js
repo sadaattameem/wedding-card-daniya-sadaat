@@ -1288,6 +1288,7 @@ function initIntro() {
     opened = true;
     if (e) e.stopPropagation();
     if (hint) hint.classList.add("is-hidden");
+    if (seal) seal.blur();
     runCinematicTimeline();
   }
 
@@ -1296,7 +1297,6 @@ function initIntro() {
     seal.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); }
     });
-    requestAnimationFrame(() => seal.focus({ preventScroll: true }));
   }
 
   initAmbientParticles();
