@@ -17,6 +17,8 @@
   --rose: #c98b96;
   --rose-dk: #a8616f;
   --wine: #7c2f43;
+  --royal-blue: #1e4a9a;
+  --royal-blue-dk: #15356f;
   --ink: #1a1525;
   --ink-soft: #2d2438;
   --line: rgba(184, 146, 63, 0.32);
@@ -1602,8 +1604,12 @@ body.nav-open { overflow: hidden; }
 .event-card__rule { display: block; width: 46px; height: 1px; background: var(--champagne); margin: 0.7rem auto; }
 .event-card__when { font-family: var(--font-serif); font-size: 1.05rem; color: var(--ink); }
 .event-card__time {
-  font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--champagne-dk); margin: 0.4rem 0;
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 2.8vw, 1.2rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--royal-blue);
+  margin: 0.55rem 0;
 }
 .event-card__venue { font-style: italic; font-size: 0.95rem; color: var(--ink); }
 
