@@ -240,6 +240,7 @@ function initNav() {
 function revealHero() {
   const heroItems = document.querySelectorAll("#hero .reveal");
   if (!heroItems.length) return;
+  scheduleHeroButterfly();
   heroItems.forEach((el) => el.classList.add("is-visible"));
   if (window.gsap) {
     gsap.to(heroItems, {
@@ -248,13 +249,11 @@ function revealHero() {
         if (window.ScrollTrigger) ScrollTrigger.refresh();
         fitHeroContent();
         showScrollPrompt();
-        scheduleHeroButterfly();
       },
     });
   } else {
     fitHeroContent();
     showScrollPrompt();
-    scheduleHeroButterfly();
   }
 }
 
@@ -262,6 +261,23 @@ function revealHero() {
    HERO BUTTERFLY — loops naturally around names, lands near Daniya
    ============================================================ */
 let heroButterflyStarted = false;
+let bflyScrollRaf = 0;
+const BFLY_SECTIONS = [
+  { id: "rsvp", el: () => document.getElementById("rsvp") },
+  { id: "venue", el: () => document.getElementById("venue") },
+  { id: "dresscode", el: () => document.getElementById("dresscode") },
+  { id: "celebrations", el: () => document.getElementById("events") },
+  { id: "countdown", el: () => document.getElementById("countdown") },
+  { id: "hero", el: () => document.getElementById("hero") },
+];
+const pageBfly = {
+  active: false,
+  currentStop: "hero",
+  flying: false,
+  flyingTo: null,
+  flightTl: null,
+  scrollBound: false,
+};
 
 function heroButterflySize(ovalWidth) {
   return Math.min(52, Math.max(36, ovalWidth * 0.058));
@@ -293,9 +309,9 @@ function getHeroButterflyLayout() {
       height: n.height,
     },
     perch: {
-      x: anchor.right - o.left - bflyW * 0.55,
-      y: anchor.bottom - o.top - bflyW * 0.2,
-      rotation: 12,
+      x: (anchor.left + anchor.right) / 2 - o.left - bflyW * 0.5,
+      y: anchor.bottom - o.top + Math.max(6, bflyW * 0.12),
+      rotation: 8,
       scale: 1,
     },
   };
@@ -374,7 +390,314 @@ function buildHeroNaturalPath(layout) {
 
 function flightSegmentDuration(a, b) {
   const dist = Math.hypot(b.x - a.x, b.y - a.y);
-  return Math.max(0.2, Math.min(0.58, dist / 165));
+  return Math.max(0.16, Math.min(0.48, dist / 190));
+}
+
+function bflyLiveSize() {
+  const bfly = document.getElementById("heroBfly");
+  return bfly?.offsetWidth || heroButterflySize(window.innerWidth * 0.9);
+}
+
+function mergeClientRects(rectList) {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+
+  for (const r of rectList) {
+    if (!r.width && !r.height) continue;
+    left = Math.min(left, r.left);
+    top = Math.min(top, r.top);
+    right = Math.max(right, r.right);
+    bottom = Math.max(bottom, r.bottom);
+  }
+
+  if (right <= left || bottom <= top) return null;
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
+}
+
+function getTitleTextRect(el) {
+  if (!el) return null;
+
+  const range = document.createRange();
+  try {
+    range.selectNodeContents(el);
+    const merged = mergeClientRects(range.getClientRects());
+    if (merged) return merged;
+  } catch (_) {
+    /* fall through */
+  }
+
+  return el.getBoundingClientRect();
+}
+
+function bflyAnchorFromRect(rect, mode) {
+  const size = bflyLiveSize();
+  const hh = size * (168 / 200);
+
+  if (mode === "below-center") {
+    return { left: rect.left + rect.width / 2 - size / 2, top: rect.bottom + 8, rotation: 8 };
+  }
+  if (mode === "title-top-right") {
+    const gap = Math.max(10, size * 0.18);
+    return {
+      left: rect.right + gap,
+      top: rect.top - hh * 0.06,
+      rotation: 12,
+    };
+  }
+  return { left: rect.left, top: rect.top, rotation: 8 };
+}
+
+function getBflyStopAnchor(stopId) {
+  const stops = {
+    hero: { el: () => document.querySelector('[data-field="partner2"]'), mode: "below-center", text: false },
+    countdown: { el: () => document.querySelector("#countdown .script-title"), mode: "title-top-right", text: true },
+    celebrations: { el: () => document.querySelector("#events .script-title"), mode: "title-top-right", text: true },
+    dresscode: { el: () => document.querySelector("#dresscode .script-title"), mode: "title-top-right", text: true },
+    venue: { el: () => document.querySelector("#venue .script-title"), mode: "title-top-right", text: true },
+    rsvp: { el: () => document.querySelector("#rsvp .script-title"), mode: "title-top-right", text: true },
+  };
+  const stop = stops[stopId];
+  if (!stop) return null;
+  const el = stop.el();
+  if (!el) return null;
+  const rect = stop.text ? getTitleTextRect(el) : el.getBoundingClientRect();
+  if (!rect) return null;
+  return bflyAnchorFromRect(rect, stop.mode);
+}
+
+function applyPageBflyPos(bfly, anchor) {
+  if (!bfly || !anchor) return;
+  if (window.gsap) {
+    gsap.set(bfly, {
+      position: "fixed",
+      left: 0,
+      top: 0,
+      margin: 0,
+      x: anchor.left,
+      y: anchor.top,
+      rotation: anchor.rotation,
+    });
+  } else {
+    bfly.style.position = "fixed";
+    bfly.style.left = "0";
+    bfly.style.top = "0";
+    bfly.style.margin = "0";
+    bfly.style.transform = `translate(${anchor.left}px, ${anchor.top}px) rotate(${anchor.rotation}deg)`;
+  }
+}
+
+function setBflyAtAnchor(stopId) {
+  const bfly = document.getElementById("heroBfly");
+  const target = getBflyStopAnchor(stopId);
+  if (!bfly || !target) return;
+  applyPageBflyPos(bfly, target);
+  pageBfly.currentStop = stopId;
+}
+
+function getActiveBflyStop() {
+  const probeY = window.innerHeight * 0.36;
+
+  for (const { id, el } of BFLY_SECTIONS) {
+    const node = el();
+    if (!node) continue;
+    const r = node.getBoundingClientRect();
+    if (r.top <= probeY && r.bottom >= probeY) return id;
+  }
+
+  const hero = document.getElementById("hero");
+  if (hero) {
+    const r = hero.getBoundingClientRect();
+    if (r.bottom > window.innerHeight * 0.12) return "hero";
+  }
+
+  return pageBfly.currentStop || "hero";
+}
+
+function followBflyAnchor(stopId) {
+  const bfly = document.getElementById("heroBfly");
+  const target = getBflyStopAnchor(stopId);
+  if (!bfly || !target) return;
+  applyPageBflyPos(bfly, target);
+}
+
+function buildSectionTravelPath(fromX, fromY, target) {
+  const size = bflyLiveSize();
+  const hh = size * (168 / 200);
+  const px = target.left;
+  const py = target.top;
+  const r = Math.max(size * 1.45, 38);
+  const spin = Math.random() < 0.5 ? 1 : -1;
+
+  return enrichFlightPoints([
+    { x: fromX, y: fromY },
+    { x: fromX + (px - fromX) * 0.35 + size * 0.4 * spin, y: fromY + (py - fromY) * 0.28 - size * 0.75 },
+    { x: fromX + (px - fromX) * 0.68 + size * 0.15 * spin, y: fromY + (py - fromY) * 0.58 - size * 0.28 },
+    { x: px + r * 0.85 * spin, y: py - r * 0.5 },
+    { x: px - r * 0.45 * spin, y: py - r * 0.08 },
+    { x: px + r * 0.22 * spin, y: py + r * 0.32 },
+    { x: px + size * 0.12, y: py - hh * 0.16 },
+  ]);
+}
+
+function stopBflyFlight(bfly) {
+  if (pageBfly.flightTl) {
+    pageBfly.flightTl.kill();
+    pageBfly.flightTl = null;
+  }
+  if (bfly) gsap.killTweensOf(bfly);
+  pageBfly.flying = false;
+  pageBfly.flyingTo = null;
+  if (bfly) bfly.classList.remove("is-flying", "is-circling");
+}
+
+function finishBflyLanding(bfly, stopId) {
+  pageBfly.flightTl = null;
+  pageBfly.flying = false;
+  pageBfly.flyingTo = null;
+  pageBfly.currentStop = stopId;
+  bfly.classList.remove("is-flying", "is-circling");
+  bfly.classList.add("is-perched");
+  followBflyAnchor(stopId);
+}
+
+function flyBflyToStop(stopId) {
+  if (!pageBfly.active) return;
+  const bfly = document.getElementById("heroBfly");
+  const target = getBflyStopAnchor(stopId);
+  if (!bfly || !target || !window.gsap) return;
+
+  if (stopId === pageBfly.currentStop && !pageBfly.flying) {
+    followBflyAnchor(stopId);
+    return;
+  }
+
+  if (pageBfly.flying && pageBfly.flyingTo === stopId) return;
+
+  const fromX = gsap.getProperty(bfly, "x") || 0;
+  const fromY = gsap.getProperty(bfly, "y") || 0;
+
+  stopBflyFlight(bfly);
+
+  pageBfly.flying = true;
+  pageBfly.flyingTo = stopId;
+  bfly.classList.remove("is-perched");
+  bfly.classList.add("is-flying", "is-circling");
+  gsap.set(bfly, { position: "fixed", left: 0, top: 0, margin: 0, opacity: 1 });
+
+  const flightPath = buildSectionTravelPath(fromX, fromY, target);
+  const travelSegs = 3;
+  const orbitSegs = flightPath.length - 1 - travelSegs;
+  const travelDur = 3.1;
+  const orbitDur = 1.45;
+  const landDur = 1.35;
+
+  const tl = gsap.timeline({
+    onComplete: () => finishBflyLanding(bfly, stopId),
+  });
+  pageBfly.flightTl = tl;
+
+  flightPath.slice(1).forEach((point, i) => {
+    const isTravel = i < travelSegs;
+    const dur = isTravel ? travelDur / travelSegs : orbitDur / orbitSegs;
+    tl.to(bfly, {
+      x: point.x,
+      y: point.y,
+      rotation: point.rotation,
+      scale: point.scale ?? 1,
+      duration: dur,
+      ease: "none",
+    });
+  });
+
+  tl.to(bfly, {
+    x: () => getBflyStopAnchor(stopId)?.left ?? target.left,
+    y: () => getBflyStopAnchor(stopId)?.top ?? target.top,
+    rotation: () => getBflyStopAnchor(stopId)?.rotation ?? target.rotation,
+    scale: 1,
+    duration: landDur,
+    ease: "power1.out",
+  });
+}
+
+function tickBflyOnScroll() {
+  if (!pageBfly.active) return;
+  const stop = getActiveBflyStop();
+  if (!stop) return;
+
+  if (pageBfly.flying) {
+    if (stop !== pageBfly.flyingTo) flyBflyToStop(stop);
+    return;
+  }
+
+  if (stop !== pageBfly.currentStop) {
+    flyBflyToStop(stop);
+    return;
+  }
+
+  followBflyAnchor(stop);
+}
+
+function scheduleBflyScrollTick() {
+  if (!pageBfly.active || bflyScrollRaf) return;
+  bflyScrollRaf = requestAnimationFrame(() => {
+    bflyScrollRaf = 0;
+    tickBflyOnScroll();
+  });
+}
+
+function bindBflyScroll() {
+  if (pageBfly.scrollBound) return;
+  pageBfly.scrollBound = true;
+  window.addEventListener("scroll", scheduleBflyScrollTick, { passive: true });
+}
+
+function promoteButterflyToPage(bfly) {
+  const wrap = document.getElementById("heroButterfly");
+  if (!wrap || !bfly || pageBfly.active) return;
+
+  const rect = bfly.getBoundingClientRect();
+  const rotation = window.gsap ? (gsap.getProperty(bfly, "rotation") || 8) : 8;
+  const scale = window.gsap ? (gsap.getProperty(bfly, "scale") || 1) : 1;
+
+  wrap.classList.add("companion-bfly");
+  document.body.appendChild(wrap);
+
+  if (window.gsap) {
+    gsap.killTweensOf(bfly);
+    gsap.set(bfly, {
+      position: "fixed",
+      left: 0,
+      top: 0,
+      margin: 0,
+      x: rect.left,
+      y: rect.top,
+      rotation,
+      scale,
+      opacity: 1,
+    });
+  } else {
+    bfly.style.position = "fixed";
+    bfly.style.left = "0";
+    bfly.style.top = "0";
+    bfly.style.margin = "0";
+    bfly.style.transform = `translate(${rect.left}px, ${rect.top}px) rotate(${rotation}deg) scale(${scale})`;
+    bfly.style.opacity = "1";
+  }
+
+  pageBfly.active = true;
+  pageBfly.currentStop = "hero";
+
+  bindBflyScroll();
+  scheduleBflyScrollTick();
+
+  window.addEventListener("resize", onBflyResize, { passive: true });
+}
+
+function onBflyResize() {
+  if (!pageBfly.active || pageBfly.flying) return;
+  setBflyAtAnchor(pageBfly.currentStop);
 }
 
 function perchHeroButterfly() {
@@ -383,7 +706,7 @@ function perchHeroButterfly() {
   if (!bfly || !perch) return;
 
   bfly.classList.add("is-visible", "is-perched");
-  bfly.classList.remove("is-flying");
+  bfly.classList.remove("is-flying", "is-circling");
   bfly.style.opacity = "1";
 
   if (window.gsap) {
@@ -394,6 +717,7 @@ function perchHeroButterfly() {
     bfly.style.transform = `translate(${perch.x}px, ${perch.y}px) rotate(${perch.rotation}deg) scale(${perch.scale})`;
     bfly.style.opacity = "1";
   }
+  promoteButterflyToPage(bfly);
 }
 
 function flyHeroButterfly() {
@@ -424,9 +748,9 @@ function flyHeroButterfly() {
   });
   bfly.classList.add("is-flying");
 
-  const tl = gsap.timeline({ delay: 0.75 });
-  tl.to(bfly, { opacity: 1, duration: 0.55, ease: "sine.out" })
-    .add(() => bfly.classList.add("is-circling"), 0.35);
+  const tl = gsap.timeline({ delay: 0.05 });
+  tl.to(bfly, { opacity: 1, duration: 0.35, ease: "sine.out" })
+    .add(() => bfly.classList.add("is-circling"), 0.1);
 
   let prev = entry;
   flightPath.slice(1).forEach((point, i) => {
@@ -445,6 +769,7 @@ function flyHeroButterfly() {
   tl.add(() => {
     bfly.classList.remove("is-circling", "is-flying");
     bfly.classList.add("is-perched");
+    promoteButterflyToPage(bfly);
   });
 }
 
@@ -452,17 +777,11 @@ function scheduleHeroButterfly() {
   if (heroButterflyStarted) return;
   const run = () => flyHeroButterfly();
   if (document.fonts?.ready) {
-    document.fonts.ready.then(() => setTimeout(run, 400));
+    document.fonts.ready.then(run);
   } else {
-    setTimeout(run, 900);
+    run();
   }
 }
-
-window.addEventListener("resize", () => {
-  const bfly = document.getElementById("heroBfly");
-  if (!bfly?.classList.contains("is-perched")) return;
-  perchHeroButterfly();
-});
 
 /* ============================================================
    SCROLL PROMPT — appears after intro, hides on first scroll

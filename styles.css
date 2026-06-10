@@ -1033,6 +1033,17 @@ body.nav-open { overflow: hidden; }
   pointer-events: none;
   overflow: visible;
 }
+.companion-bfly {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  overflow: visible;
+}
+.companion-bfly .hero-bfly {
+  position: fixed;
+  z-index: 44;
+}
 .hero-bfly {
   position: absolute;
   left: 0;
@@ -1100,16 +1111,16 @@ body.nav-open { overflow: hidden; }
   animation: heroBflyBodyTilt 0.32s ease-in-out infinite alternate;
 }
 .hero-bfly.is-perched .hero-bfly__wing--ul {
-  animation: heroBflyPerchUL 3s ease-in-out infinite;
+  animation: heroBflyPerchUL 3.4s linear infinite;
 }
 .hero-bfly.is-perched .hero-bfly__wing--ur {
-  animation: heroBflyPerchUR 3s ease-in-out infinite;
+  animation: heroBflyPerchUR 3.4s linear infinite;
 }
 .hero-bfly.is-perched .hero-bfly__wing--ll {
-  animation: heroBflyPerchLL 3s ease-in-out infinite;
+  animation: heroBflyPerchLL 3.4s linear infinite;
 }
 .hero-bfly.is-perched .hero-bfly__wing--lr {
-  animation: heroBflyPerchLR 3s ease-in-out infinite;
+  animation: heroBflyPerchLR 3.4s linear infinite;
 }
 
 @keyframes heroBflyFlapUL {
@@ -1133,34 +1144,88 @@ body.nav-open { overflow: hidden; }
   to { transform: rotate(3deg) scale(1.04); }
 }
 @keyframes heroBflyPerchUL {
-  0%, 82%, 100% { transform: rotate(0deg) scale(1); }
-  86% { transform: rotate(-6deg) scale(1.03); }
-  89% { transform: rotate(10deg) scale(0.92); }
-  92% { transform: rotate(-5deg) scale(1.02); }
-  95% { transform: rotate(6deg) scale(0.96); }
-  98% { transform: rotate(0deg) scale(1); }
+  0%, 41%, 100% { transform: rotate(0deg) scale(1); }
+  2% { transform: rotate(-14deg) scale(1.05); }
+  4% { transform: rotate(16deg) scale(0.86); }
+  6% { transform: rotate(-12deg) scale(1.03); }
+  8% { transform: rotate(14deg) scale(0.88); }
+  10% { transform: rotate(0deg) scale(1); }
+  12% { transform: rotate(-14deg) scale(1.05); }
+  14% { transform: rotate(16deg) scale(0.86); }
+  16% { transform: rotate(-12deg) scale(1.03); }
+  18% { transform: rotate(14deg) scale(0.88); }
+  20% { transform: rotate(0deg) scale(1); }
+  22% { transform: rotate(-14deg) scale(1.05); }
+  24% { transform: rotate(16deg) scale(0.86); }
+  26% { transform: rotate(-12deg) scale(1.03); }
+  28% { transform: rotate(14deg) scale(0.88); }
+  30% { transform: rotate(0deg) scale(1); }
+  32% { transform: rotate(-14deg) scale(1.05); }
+  34% { transform: rotate(16deg) scale(0.86); }
+  36% { transform: rotate(-12deg) scale(1.03); }
+  38% { transform: rotate(14deg) scale(0.88); }
+  40% { transform: rotate(0deg) scale(1); }
 }
 @keyframes heroBflyPerchUR {
-  0%, 82%, 100% { transform: rotate(0deg) scale(1); }
-  86% { transform: rotate(6deg) scale(1.03); }
-  89% { transform: rotate(-10deg) scale(0.92); }
-  92% { transform: rotate(5deg) scale(1.02); }
-  95% { transform: rotate(-6deg) scale(0.96); }
-  98% { transform: rotate(0deg) scale(1); }
+  0%, 41%, 100% { transform: rotate(0deg) scale(1); }
+  2% { transform: rotate(14deg) scale(1.05); }
+  4% { transform: rotate(-16deg) scale(0.86); }
+  6% { transform: rotate(12deg) scale(1.03); }
+  8% { transform: rotate(-14deg) scale(0.88); }
+  10% { transform: rotate(0deg) scale(1); }
+  12% { transform: rotate(14deg) scale(1.05); }
+  14% { transform: rotate(-16deg) scale(0.86); }
+  16% { transform: rotate(12deg) scale(1.03); }
+  18% { transform: rotate(-14deg) scale(0.88); }
+  20% { transform: rotate(0deg) scale(1); }
+  22% { transform: rotate(14deg) scale(1.05); }
+  24% { transform: rotate(-16deg) scale(0.86); }
+  26% { transform: rotate(12deg) scale(1.03); }
+  28% { transform: rotate(-14deg) scale(0.88); }
+  30% { transform: rotate(0deg) scale(1); }
+  32% { transform: rotate(14deg) scale(1.05); }
+  34% { transform: rotate(-16deg) scale(0.86); }
+  36% { transform: rotate(12deg) scale(1.03); }
+  38% { transform: rotate(-14deg) scale(0.88); }
+  40% { transform: rotate(0deg) scale(1); }
 }
 @keyframes heroBflyPerchLL {
-  0%, 82%, 100% { transform: rotate(0deg) scale(1); }
-  87% { transform: rotate(-5deg) scale(1.02); }
-  90% { transform: rotate(7deg) scale(0.94); }
-  93% { transform: rotate(-4deg) scale(1.01); }
-  96% { transform: rotate(0deg) scale(1); }
+  0%, 41%, 100% { transform: rotate(0deg) scale(1); }
+  3% { transform: rotate(-10deg) scale(1.02); }
+  5% { transform: rotate(12deg) scale(0.9); }
+  7% { transform: rotate(-8deg) scale(1.01); }
+  9% { transform: rotate(10deg) scale(0.92); }
+  13% { transform: rotate(-10deg) scale(1.02); }
+  15% { transform: rotate(12deg) scale(0.9); }
+  17% { transform: rotate(-8deg) scale(1.01); }
+  19% { transform: rotate(10deg) scale(0.92); }
+  23% { transform: rotate(-10deg) scale(1.02); }
+  25% { transform: rotate(12deg) scale(0.9); }
+  27% { transform: rotate(-8deg) scale(1.01); }
+  29% { transform: rotate(10deg) scale(0.92); }
+  33% { transform: rotate(-10deg) scale(1.02); }
+  35% { transform: rotate(12deg) scale(0.9); }
+  37% { transform: rotate(-8deg) scale(1.01); }
+  39% { transform: rotate(10deg) scale(0.92); }
 }
 @keyframes heroBflyPerchLR {
-  0%, 82%, 100% { transform: rotate(0deg) scale(1); }
-  87% { transform: rotate(5deg) scale(1.02); }
-  90% { transform: rotate(-7deg) scale(0.94); }
-  93% { transform: rotate(4deg) scale(1.01); }
-  96% { transform: rotate(0deg) scale(1); }
+  0%, 41%, 100% { transform: rotate(0deg) scale(1); }
+  3% { transform: rotate(10deg) scale(1.02); }
+  5% { transform: rotate(-12deg) scale(0.9); }
+  7% { transform: rotate(8deg) scale(1.01); }
+  9% { transform: rotate(-10deg) scale(0.92); }
+  13% { transform: rotate(10deg) scale(1.02); }
+  15% { transform: rotate(-12deg) scale(0.9); }
+  17% { transform: rotate(8deg) scale(1.01); }
+  19% { transform: rotate(-10deg) scale(0.92); }
+  23% { transform: rotate(10deg) scale(1.02); }
+  25% { transform: rotate(-12deg) scale(0.9); }
+  27% { transform: rotate(8deg) scale(1.01); }
+  29% { transform: rotate(-10deg) scale(0.92); }
+  33% { transform: rotate(10deg) scale(1.02); }
+  35% { transform: rotate(-12deg) scale(0.9); }
+  37% { transform: rotate(8deg) scale(1.01); }
+  39% { transform: rotate(-10deg) scale(0.92); }
 }
 .hero__amp {
   display: block;
@@ -1188,8 +1253,12 @@ body.nav-open { overflow: hidden; }
   color: var(--ink);
   padding: 0 0.25rem;
 }
-.hero__insha, .nowrap {
+.hero__insha, .date-insha, .nowrap {
   white-space: nowrap;
+}
+.date-insha {
+  font-style: italic;
+  font-weight: 500;
 }
 .hero__sub {
   position: relative; z-index: 1; max-width: 540px;
