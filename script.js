@@ -105,6 +105,36 @@ const BFLY_PALETTE = [
 let butterflyTextures = [];
 let heartTextures = [];
 
+const RSVP_HEART_COLORS = [
+  "#6b1530", "#8c1f3f", "#a5284d", "#4a0f24", "#7a1a38",
+  "#9b2248", "#5c1228", "#b8325c", "#702040", "#3d0a1c",
+  "#c43a66", "#521428", "#922d4a", "#681832", "#a02040",
+];
+
+function drawHeartShape(ctx, cx, cy, s, fill) {
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + s * 0.35);
+  ctx.bezierCurveTo(cx, cy - s * 0.45, cx - s * 1.1, cy - s * 0.45, cx - s * 1.1, cy + s * 0.15);
+  ctx.bezierCurveTo(cx - s * 1.1, cy + s * 0.85, cx, cy + s * 1.25, cx, cy + s * 1.65);
+  ctx.bezierCurveTo(cx, cy + s * 1.25, cx + s * 1.1, cy + s * 0.85, cx + s * 1.1, cy + s * 0.15);
+  ctx.bezierCurveTo(cx + s * 1.1, cy - s * 0.45, cx, cy - s * 0.45, cx, cy + s * 0.35);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function buildRsvpHeartTextures() {
+  const S = 180;
+  return RSVP_HEART_COLORS.map((fill) => {
+    const c = document.createElement("canvas");
+    c.width = S;
+    c.height = S;
+    const x = c.getContext("2d");
+    drawHeartShape(x, S / 2, S / 2 + 8, 22, fill);
+    return { canvas: c, size: S };
+  });
+}
+
 function buildHeartTextures() {
   const S = 120;
   const fills = ["#d4a0ac", "#b07080", "#e8c4cc", "#9a6878"];
@@ -112,16 +142,7 @@ function buildHeartTextures() {
     const c = document.createElement("canvas");
     c.width = S; c.height = S;
     const x = c.getContext("2d");
-    const cx = S / 2, cy = S / 2 + 6, s = 16;
-    x.fillStyle = fill;
-    x.beginPath();
-    x.moveTo(cx, cy + s * 0.35);
-    x.bezierCurveTo(cx, cy - s * 0.45, cx - s * 1.1, cy - s * 0.45, cx - s * 1.1, cy + s * 0.15);
-    x.bezierCurveTo(cx - s * 1.1, cy + s * 0.85, cx, cy + s * 1.25, cx, cy + s * 1.65);
-    x.bezierCurveTo(cx, cy + s * 1.25, cx + s * 1.1, cy + s * 0.85, cx + s * 1.1, cy + s * 0.15);
-    x.bezierCurveTo(cx + s * 1.1, cy - s * 0.45, cx, cy - s * 0.45, cx, cy + s * 0.35);
-    x.closePath();
-    x.fill();
+    drawHeartShape(x, S / 2, S / 2 + 6, 16, fill);
     return { canvas: c, size: S };
   });
 }
@@ -1783,7 +1804,6 @@ async function submitRsvpResponse(data) {
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         name: data.name || "",
-        email: data.email || "",
         phone: data.phone || "",
         attending: data.attending || "",
         guests: data.guests || "",
@@ -1810,7 +1830,7 @@ async function submitRsvpResponse(data) {
 
   const subject = encodeURIComponent(`RSVP — ${data.name}`);
   const body = encodeURIComponent(
-    `Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone || "-"}\nAttending: ${data.attending}\nGuests: ${data.guests}\nNote: ${data.message || "-"}`
+    `Name: ${data.name}\nPhone: ${data.phone || "-"}\nAttending: ${data.attending}\nGuests: ${data.guests || "-"}\nNote: ${data.message || "-"}`
   );
   window.location.href = `mailto:${WEDDING.contactEmail}?subject=${subject}&body=${body}`;
 }
@@ -1840,20 +1860,13 @@ function initRSVP() {
     status.className = "rsvp-status";
     status.textContent = "";
 
-    let valid = true;
-    ["name", "email"].forEach((id) => {
-      const el = form.elements[id];
-      if (!el.value.trim()) { el.classList.add("invalid"); valid = false; }
-      else el.classList.remove("invalid");
-    });
-    const email = form.elements["email"];
-    if (email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
-      email.classList.add("invalid"); valid = false;
-    }
+    const nameEl = form.elements["name"];
+    const valid = nameEl && nameEl.value.trim();
+    if (nameEl) nameEl.classList.toggle("invalid", !valid);
     if (!attending.value) attending.value = "yes";
     if (!valid) {
       status.classList.add("is-error");
-      status.textContent = "Please share your name and a valid email.";
+      status.textContent = "Please enter your name to RSVP.";
       return;
     }
 
@@ -1863,26 +1876,213 @@ function initRSVP() {
       const result = await submitRsvpResponse(data);
       status.classList.add("is-success");
       if (result?.duplicate) {
-        status.textContent = "Your RSVP is already saved — thank you, InshaAllah.";
+        status.textContent = "Submit already recorded — thank you!";
       } else if (result?.updated) {
-        status.textContent = "Your RSVP has been updated — thank you, InshaAllah.";
+        status.textContent = "Submit recorded — updated!";
       } else {
-        status.textContent = data.attending === "no"
-          ? "Thank you for letting us know — you will be dearly missed."
-          : "Thank you! We can't wait to celebrate with you, InshaAllah.";
+        status.textContent = "Submit recorded — thank you!";
       }
-      if (data.attending !== "no" && !result?.duplicate) flyButterfliesAcross();
+      playRsvpHeartSplash();
       form.reset();
-      attending.value = "";
+      if (attending) attending.value = "";
     } catch (err) {
-      setRsvpFormBusy(form, false);
       status.classList.add("is-error");
       status.textContent = "Something went wrong — please try again or email us directly.";
+    } finally {
+      setRsvpFormBusy(form, false);
     }
   });
+
+  initRsvpAcceptHover();
 }
 
-/* ---------- Butterflies sweep across on RSVP success ---------- */
+function initRsvpAcceptHover() {
+  const wrap = document.querySelector(".rsvp-accept-wrap");
+  const canvas = wrap?.querySelector(".rsvp-accept-orbit");
+  const btn = wrap?.querySelector(".btn--accept");
+  if (!wrap || !canvas || !btn || reducedMotion) return;
+
+  if (!butterflyTextures.length) butterflyTextures = buildButterflyTextures();
+
+  const ctx = canvas.getContext("2d");
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  const canvasSize = 220;
+  canvas.width = canvasSize * DPR;
+  canvas.height = canvasSize * DPR;
+  canvas.style.width = `${canvasSize}px`;
+  canvas.style.height = `${canvasSize}px`;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  const flies = Array.from({ length: 6 }, (_, i) => ({
+    angle: (i / 6) * Math.PI * 2,
+    speed: 0.85 + (i % 3) * 0.18,
+    radiusX: 78 + (i % 2) * 14,
+    radiusY: 50 + (i % 3) * 10,
+    size: 24 + (i % 2) * 5,
+    tex: butterflyTextures[i % butterflyTextures.length],
+    wobble: (i * 0.7) % (Math.PI * 2),
+  }));
+
+  let raf = 0;
+  let active = false;
+  let orbitStart = 0;
+
+  function draw(now) {
+    if (!active) return;
+    const sec = (now - orbitStart) / 1000;
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    const cx = canvasSize / 2;
+    const cy = canvasSize / 2;
+
+    for (const f of flies) {
+      const ang = f.angle + sec * f.speed;
+      const x = cx + Math.cos(ang) * f.radiusX;
+      const y = cy + Math.sin(ang) * f.radiusY;
+      const half = f.size / 2;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.translate(x, y);
+      ctx.rotate(Math.sin(ang + f.wobble) * 0.35);
+      ctx.drawImage(f.tex.canvas, -half, -half, f.size, f.size);
+      ctx.restore();
+    }
+
+    raf = requestAnimationFrame(draw);
+  }
+
+  function startHover() {
+    if (active) return;
+    active = true;
+    wrap.classList.add("is-hover");
+    orbitStart = performance.now();
+    raf = requestAnimationFrame(draw);
+  }
+
+  function endHover() {
+    if (!active) return;
+    active = false;
+    wrap.classList.remove("is-hover");
+    cancelAnimationFrame(raf);
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+  }
+
+  btn.addEventListener("mouseenter", startHover);
+  btn.addEventListener("mouseleave", endHover);
+  btn.addEventListener("focus", startHover);
+  btn.addEventListener("blur", endHover);
+}
+
+/* ---------- Heart splash on RSVP success ---------- */
+let rsvpHeartTextures = [];
+
+function playRsvpHeartSplash() {
+  const canvas = document.getElementById("fxCanvas");
+  if (!canvas || reducedMotion) return;
+  if (!rsvpHeartTextures.length) rsvpHeartTextures = buildRsvpHeartTextures();
+
+  const ctx = canvas.getContext("2d");
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width = `${W}px`;
+  canvas.style.height = `${H}px`;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  const hearts = [];
+  const minSize = isMobile ? 38 : 48;
+  const maxSize = isMobile ? 92 : 118;
+  const count = isMobile ? 220 : 340;
+  const cx = W / 2;
+  const cy = H / 2;
+
+  for (let i = 0; i < count; i++) {
+    const layer = i % 3;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = rand(2.5, 9);
+    let x = rand(-80, W + 80);
+    let y = rand(-80, H + 80);
+    let vx = rand(-1.4, 1.4);
+    let vy = rand(-1.4, 1.4);
+
+    if (layer === 0) {
+      x = cx + rand(-50, 50);
+      y = cy + rand(-40, 40);
+      vx = Math.cos(angle) * speed;
+      vy = Math.sin(angle) * speed;
+    } else if (layer === 1) {
+      x = rand(0, W);
+      y = rand(-120, -20);
+      vy = rand(2.5, 7);
+      vx = rand(-1.8, 1.8);
+    } else {
+      x = rand(-120, W + 120);
+      y = rand(0, H);
+      vx = rand(-2.2, 2.2);
+      vy = rand(-2.2, 2.2);
+    }
+
+    hearts.push({
+      x,
+      y,
+      vx,
+      vy,
+      size: rand(minSize, maxSize),
+      rot: rand(0, Math.PI * 2),
+      rotSpeed: rand(-0.07, 0.07),
+      alpha: rand(0.82, 1),
+      pulse: Math.random() * Math.PI * 2,
+      tex: rsvpHeartTextures[(Math.random() * rsvpHeartTextures.length) | 0],
+      delay: rand(0, 28),
+      pop: rand(0.55, 1.15),
+    });
+  }
+
+  let frame = 0;
+  let raf = 0;
+  const maxFrames = 300;
+
+  function draw() {
+    frame += 1;
+    ctx.clearRect(0, 0, W, H);
+
+    const wash = Math.min(0.58, (frame / 55) * 0.58);
+    ctx.fillStyle = `rgba(214, 150, 168, ${wash})`;
+    ctx.fillRect(0, 0, W, H);
+
+    for (const h of hearts) {
+      if (frame < h.delay) continue;
+      h.x += h.vx;
+      h.y += h.vy;
+      h.vx *= 0.992;
+      h.vy *= 0.992;
+      h.rot += h.rotSpeed;
+      h.pulse += 0.16;
+      const popIn = Math.min(1, (frame - h.delay) / 14) * h.pop;
+      const scale = (0.72 + 0.28 * Math.sin(h.pulse)) * popIn;
+      const fadeOut = frame > maxFrames - 70 ? (maxFrames - frame) / 70 : 1;
+      const drawSize = h.size * scale;
+      const half = drawSize / 2;
+      ctx.save();
+      ctx.globalAlpha = h.alpha * Math.min(1, popIn + 0.15) * fadeOut;
+      ctx.translate(h.x, h.y);
+      ctx.rotate(h.rot);
+      ctx.drawImage(h.tex.canvas, -half, -half, drawSize, drawSize);
+      ctx.restore();
+    }
+
+    if (frame < maxFrames) raf = requestAnimationFrame(draw);
+    else {
+      cancelAnimationFrame(raf);
+      ctx.clearRect(0, 0, W, H);
+    }
+  }
+
+  draw();
+}
+
+/* ---------- Butterflies sweep across (legacy) ---------- */
 function flyButterfliesAcross() {
   const canvas = document.getElementById("fxCanvas");
   if (!canvas || reducedMotion || !butterflyTextures.length) return;

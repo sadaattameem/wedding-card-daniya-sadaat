@@ -6,7 +6,6 @@
  * 1. Open the spreadsheet → Extensions → Apps Script
  * 2. Paste this file, save
  * 3. Deploy → Manage deployments → Edit → New version → Deploy
- *    (or New deployment for first time)
  *    - Execute as: Me
  *    - Who has access: Anyone
  */
@@ -28,14 +27,13 @@ function ensureHeaders_(sheet) {
   sheet.getRange(1, 1, 1, 7).setFontWeight("bold");
 }
 
-function normalizeEmail_(email) {
-  return String(email || "").trim().toLowerCase();
+function normalizeName_(name) {
+  return String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function payloadKey_(data) {
   return [
-    normalizeEmail_(data.email),
-    String(data.name || "").trim().toLowerCase(),
+    normalizeName_(data.name),
     String(data.attending || ""),
     String(data.guests || ""),
     String(data.phone || "").trim(),
@@ -49,7 +47,6 @@ function rowToData_(row) {
   return {
     timestamp: isNaN(timestamp) ? 0 : timestamp,
     name: row[1],
-    email: row[2],
     phone: row[3],
     attending: row[4],
     guests: String(row[5]),
@@ -61,12 +58,16 @@ function rowValues_(data) {
   return [
     new Date(),
     data.name || "",
-    data.email || "",
+    "",
     data.phone || "",
     data.attending || "",
     data.guests || "",
     data.message || "",
   ];
+}
+
+function rowName_(row) {
+  return normalizeName_(row[1]);
 }
 
 function saveRsvp_(data) {
@@ -76,12 +77,14 @@ function saveRsvp_(data) {
     const sheet = getRsvpSheet_();
     ensureHeaders_(sheet);
     const rows = sheet.getDataRange().getValues();
-    const email = normalizeEmail_(data.email);
+    const name = normalizeName_(data.name);
+    if (!name) return { success: false, error: "Name is required." };
+
     const key = payloadKey_(data);
     const now = Date.now();
 
     for (let i = 1; i < rows.length; i++) {
-      if (normalizeEmail_(rows[i][2]) !== email) continue;
+      if (rowName_(rows[i]) !== name) continue;
       const existing = rowToData_(rows[i]);
       const age = now - existing.timestamp;
       if (payloadKey_(existing) === key || age < DEDUP_WINDOW_MS) {
@@ -108,9 +111,6 @@ function doPost(e) {
   try {
     const raw = e && e.postData && e.postData.contents ? e.postData.contents : "{}";
     const data = JSON.parse(raw);
-    if (!normalizeEmail_(data.email)) {
-      return jsonResponse_({ success: false, error: "Email is required." });
-    }
     return jsonResponse_(saveRsvp_(data));
   } catch (err) {
     return jsonResponse_({ success: false, error: String(err) });
@@ -124,10 +124,9 @@ function doGet() {
 function testAppend() {
   const sample = {
     name: "Test Guest",
-    email: "test@example.com",
-    phone: "555-0100",
+    phone: "",
     attending: "yes",
-    guests: "2",
+    guests: "",
     message: "Apps Script test row",
   };
   Logger.log(saveRsvp_(sample));

@@ -517,15 +517,11 @@
           <input type="text" id="name" name="name" required placeholder="Your full name" />
         </div>
         <div class="field">
-          <label for="guests">Number of Guests</label>
-          <input type="number" id="guests" name="guests" min="1" max="10" value="1" />
+          <label for="guests">Number of Guests <span class="opt">(optional)</span></label>
+          <input type="number" id="guests" name="guests" min="1" max="10" placeholder="1" />
         </div>
         <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" required placeholder="you@example.com" />
-        </div>
-        <div class="field">
-          <label for="phone">Phone Number</label>
+          <label for="phone">Phone Number <span class="opt">(optional)</span></label>
           <input type="tel" id="phone" name="phone" placeholder="(000) 000-0000" />
         </div>
         <div class="field field--full">
@@ -535,7 +531,10 @@
 
         <input type="hidden" id="attending" name="attending" value="" />
         <div class="rsvp-actions">
-          <button type="submit" class="btn btn--accept" data-attend="yes">Accept with Pleasure</button>
+          <div class="rsvp-accept-wrap">
+            <canvas class="rsvp-accept-orbit" aria-hidden="true"></canvas>
+            <button type="submit" class="btn btn--accept" data-attend="yes">Accept with Pleasure</button>
+          </div>
           <button type="submit" class="btn btn--decline" data-attend="no">Regretfully Decline</button>
         </div>
         <p class="rsvp-status" id="rsvpStatus" role="status" aria-live="polite"></p>
@@ -555,6 +554,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
-  <script src="script.js?v=bfly-footer-fast1" defer></script>
+  <script src="script.js?v=rsvp-accept1" defer></script>
 </body>
 </html>
