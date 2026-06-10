@@ -258,11 +258,15 @@ function revealHero() {
 }
 
 /* ============================================================
-   HERO BUTTERFLY — loops naturally around names, lands near Daniya
+   HERO BUTTERFLIES — pink (Daniya) & blue (Sadaat)
    ============================================================ */
-let heroButterflyStarted = false;
+const BFLY_ROLES = ["pink", "blue"];
 let bflyScrollRaf = 0;
+let bflyScrollEndTimer = 0;
+let bflyScrollBound = false;
+const bflyMerge = { active: false, running: false, tl: null };
 const BFLY_SECTIONS = [
+  { id: "footer", el: () => document.getElementById("footer") },
   { id: "rsvp", el: () => document.getElementById("rsvp") },
   { id: "venue", el: () => document.getElementById("venue") },
   { id: "dresscode", el: () => document.getElementById("dresscode") },
@@ -270,28 +274,55 @@ const BFLY_SECTIONS = [
   { id: "countdown", el: () => document.getElementById("countdown") },
   { id: "hero", el: () => document.getElementById("hero") },
 ];
-const pageBfly = {
-  active: false,
-  currentStop: "hero",
-  flying: false,
-  flyingTo: null,
-  flightTl: null,
-  scrollBound: false,
+const BFLY_CFG = {
+  pink: {
+    bflyId: "heroBfly",
+    wrapId: "heroButterfly",
+    partnerField: "partner2",
+    titleAnchor: "title-top-right",
+    perchRotation: 8,
+    spin: 1,
+  },
+  blue: {
+    bflyId: "heroBflyBlue",
+    wrapId: "heroButterflyBlue",
+    partnerField: "partner1",
+    titleAnchor: "title-top-left",
+    perchRotation: -8,
+    spin: -1,
+  },
 };
+const bflyState = {
+  pink: { active: false, currentStop: "hero", flying: false, flyingTo: null, flightTl: null, heroStarted: false },
+  blue: { active: false, currentStop: "hero", flying: false, flyingTo: null, flightTl: null, heroStarted: false },
+};
+
+function getBflyCfg(role) {
+  return BFLY_CFG[role];
+}
+
+function getBflyEl(role) {
+  return document.getElementById(getBflyCfg(role).bflyId);
+}
 
 function heroButterflySize(ovalWidth) {
   return Math.min(52, Math.max(36, ovalWidth * 0.058));
 }
 
-function getHeroButterflyLayout() {
+function heroNamePerchGap(size) {
+  return Math.max(8, size * 0.12);
+}
+
+function getHeroButterflyLayout(role) {
+  const cfg = getBflyCfg(role);
   const oval = document.querySelector(".hero__oval");
   const names = document.querySelector(".hero__names");
-  const partner2 = names?.querySelector('[data-field="partner2"]');
+  const partner = names?.querySelector(`[data-field="${cfg.partnerField}"]`);
   if (!oval || !names) return null;
 
   const o = oval.getBoundingClientRect();
   const n = names.getBoundingClientRect();
-  const anchor = partner2?.getBoundingClientRect() || n;
+  const anchor = partner?.getBoundingClientRect() || n;
   const bflyW = heroButterflySize(o.width);
   const bflyH = bflyW * (168 / 200);
 
@@ -308,22 +339,24 @@ function getHeroButterflyLayout() {
       width: n.width,
       height: n.height,
     },
-    perch: {
-      x: (anchor.left + anchor.right) / 2 - o.left - bflyW * 0.5,
-      y: anchor.bottom - o.top + Math.max(6, bflyW * 0.12),
-      rotation: 8,
-      scale: 1,
-    },
+    perch: (() => {
+      const gap = heroNamePerchGap(bflyW);
+      const x = (anchor.left + anchor.right) / 2 - o.left - bflyW * 0.5;
+      if (role === "blue") {
+        return { x, y: anchor.top - o.top - bflyH - gap, rotation: cfg.perchRotation, scale: 1 };
+      }
+      return { x, y: anchor.bottom - o.top + gap, rotation: cfg.perchRotation, scale: 1 };
+    })(),
   };
 }
 
-function getHeroButterflyPerch() {
-  return getHeroButterflyLayout()?.perch ?? null;
+function getHeroButterflyPerch(role) {
+  return getHeroButterflyLayout(role)?.perch ?? null;
 }
 
 function enrichFlightPoints(points) {
   return points.map((point, i) => {
-    if (point.rotation != null) return point;
+    if (point.rotation != null) return { ...point };
     const prev = points[Math.max(0, i - 1)];
     const next = points[Math.min(points.length - 1, i + 1)];
     const dx = next.x - prev.x;
@@ -335,6 +368,7 @@ function enrichFlightPoints(points) {
       y: point.y + wobble * 0.35,
       rotation: (Math.atan2(dy, dx) * 180) / Math.PI + 88,
       scale: 0.92 + (i % 3) * 0.03,
+      isMeet: point.isMeet,
     };
   });
 }
@@ -358,34 +392,263 @@ function smoothFlightPath(waypoints, stepsBetween = 3) {
   return enrichFlightPoints(smooth);
 }
 
-function buildHeroNaturalPath(layout) {
-  const { names, bflyW, bflyH, perch, ovalW } = layout;
-  const hw = bflyW * 0.5;
-  const hh = bflyH * 0.58;
-  const gap = Math.max(bflyW * 0.72, 12);
-  const centerX = (names.left + names.right) / 2 - hw;
-  const topLane = names.top - gap - hh;
-  const leftLane = names.left - gap - hw;
-  const rightLane = names.right + gap - hw;
-  const shoulderY = names.top + names.height * 0.28 - hh;
-  const waistY = names.bottom + gap * 0.25 - hh;
+const HERO_FLYOVER_DURATION = 3;
 
-  const waypoints = [
-    { x: ovalW * 1.08, y: topLane - gap * 0.8 },
-    { x: rightLane + gap * 0.85, y: topLane - gap * 0.35 },
-    { x: rightLane, y: topLane },
-    { x: centerX, y: topLane - gap * 0.2 },
-    { x: leftLane, y: topLane },
-    { x: leftLane - gap * 0.5, y: shoulderY },
-    { x: leftLane, y: waistY },
-    { x: centerX, y: topLane + gap * 0.1 },
-    { x: rightLane, y: shoulderY },
-    { x: rightLane + gap * 0.35, y: waistY },
-    { x: perch.x + 16, y: perch.y - 18 },
-    { x: perch.x, y: perch.y, rotation: perch.rotation, scale: perch.scale },
+function buildHeroFlyoverPath(layout, role) {
+  const { names, ovalW, bflyW, perch } = layout;
+  const cfg = getBflyCfg(role);
+  const zoneTop = Math.max(0, names.top - bflyW);
+  const zoneBot = names.bottom + bflyW * 2.2;
+  const randY = () => zoneTop + Math.random() * (zoneBot - zoneTop);
+  const randX = () => bflyW * 0.1 + Math.random() * (ovalW - bflyW * 1.2);
+  const entry = {
+    x: cfg.spin > 0 ? ovalW + bflyW * 0.6 : -bflyW * 0.8,
+    y: randY(),
+  };
+
+  return enrichFlightPoints([
+    entry,
+    { x: randX(), y: randY() },
+    { x: randX(), y: randY() },
+    { x: randX(), y: randY() },
+    { x: randX(), y: randY() },
+    { x: randX(), y: randY() },
+    { x: perch.x + 8 * cfg.spin, y: perch.y + (role === "blue" ? 14 : -12) },
+    { x: perch.x, y: perch.y, rotation: perch.rotation, scale: 1 },
+  ]);
+}
+
+function getLetterRect(el, index) {
+  if (!el) return null;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const node = walker.nextNode();
+  if (!node || !node.textContent) return null;
+  const text = node.textContent;
+  const i = Math.max(0, Math.min(index, text.length - 1));
+  const range = document.createRange();
+  try {
+    range.setStart(node, i);
+    range.setEnd(node, i + 1);
+    const r = range.getBoundingClientRect();
+    if (r.width || r.height) return r;
+  } catch (_) {
+    /* fall through */
+  }
+  return null;
+}
+
+function rewriteBflySvgIds(html, prefix) {
+  return html
+    .replace(/\bid="hbBl/g, `id="${prefix}`)
+    .replace(/url\(#hbBl/g, `url(#${prefix}`)
+    .replace(/\bid="hb/g, `id="${prefix}`)
+    .replace(/url\(#hb/g, `url(#${prefix}`);
+}
+
+function introBflySize() {
+  return Math.min(44, Math.max(28, window.innerWidth * 0.055));
+}
+
+function mountIntroButterflies() {
+  const headline = document.getElementById("introHeadline");
+  if (!headline || headline.dataset.bfliesMounted) return;
+  headline.dataset.bfliesMounted = "1";
+
+  const specs = [
+    { role: "blue", srcId: "heroBflyBlue", wrapId: "introBflyWrapBlue", bflyId: "introBflyBlue", prefix: "introBl", partnerField: "partner1" },
+    { role: "pink", srcId: "heroBfly", wrapId: "introBflyWrapPink", bflyId: "introBflyPink", prefix: "introPk", partnerField: "partner2" },
   ];
 
-  return smoothFlightPath(waypoints, 4);
+  specs.forEach(({ role, srcId, wrapId, bflyId, prefix, partnerField }) => {
+    const src = document.getElementById(srcId);
+    if (!src) return;
+    const wrap = document.createElement("div");
+    wrap.id = wrapId;
+    wrap.className = `intro-bfly-wrap intro-bfly-wrap--${role}`;
+    wrap.setAttribute("aria-hidden", "true");
+    const bfly = document.createElement("div");
+    bfly.id = bflyId;
+    bfly.className = `${src.className} is-visible is-intro-perched`;
+    bfly.innerHTML = rewriteBflySvgIds(src.innerHTML, prefix);
+    wrap.appendChild(bfly);
+    headline.appendChild(wrap);
+  });
+
+  positionIntroButterflies();
+}
+
+function positionIntroButterflies() {
+  const headline = document.getElementById("introHeadline");
+  const intro = document.getElementById("intro");
+  if (!headline || !intro || intro.classList.contains("is-done") || introOrbit.active) return;
+
+  const hRect = headline.getBoundingClientRect();
+  const size = introBflySize();
+  const hh = size * (168 / 200);
+  const sadaat = headline.querySelector('[data-field="partner1"]');
+  const daniya = headline.querySelector('[data-field="partner2"]');
+  const blueWrap = document.getElementById("introBflyWrapBlue");
+  const pinkWrap = document.getElementById("introBflyWrapPink");
+
+  if (sadaat && blueWrap) {
+    const rect = getTitleTextRect(sadaat);
+    const gap = Math.max(6, size * 0.12);
+    if (rect) {
+      blueWrap.style.width = `${size}px`;
+      blueWrap.style.left = `${rect.right - hRect.left + gap}px`;
+      blueWrap.style.top = `${rect.top - hRect.top - hh * 0.08}px`;
+    }
+  }
+
+  if (daniya && pinkWrap) {
+    const dRect = getLetterRect(daniya, 0);
+    if (dRect) {
+      const gap = Math.max(2, size * 0.035);
+      pinkWrap.style.width = `${size}px`;
+      pinkWrap.style.left = `${dRect.left - hRect.left - size * 0.92}px`;
+      pinkWrap.style.top = `${dRect.bottom - hRect.top - hh + gap}px`;
+    }
+  }
+}
+
+let introOrbitRaf = 0;
+const introOrbit = { active: false, startTime: 0 };
+
+function getIntroOvalMetrics() {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  return {
+    cx: W / 2,
+    cy: H * 0.44,
+    A: Math.min(W * 0.27, 280),
+    B: Math.min(H * 0.24, 240),
+  };
+}
+
+function getIntroOrbitPoint(role, timeSec) {
+  const { cx, cy, A, B } = getIntroOvalMetrics();
+  const size = introBflySize();
+  const hh = size * (168 / 200);
+  const base = role === "pink" ? -0.35 : Math.PI - 0.35;
+  const ang = base + timeSec * 0.58;
+  return {
+    x: cx + Math.cos(ang) * A - size / 2,
+    y: cy + Math.sin(ang) * B - hh / 2,
+    rotation: Math.sin(ang) * 12 + (role === "pink" ? 6 : -6),
+  };
+}
+
+function detachIntroButterflyWrap(wrap) {
+  if (!wrap || wrap.dataset.detached === "1") return;
+  const rect = wrap.getBoundingClientRect();
+  const host = document.getElementById("intro") || document.body;
+  wrap.dataset.detached = "1";
+  wrap.classList.add("intro-bfly-wrap--orbit");
+  host.appendChild(wrap);
+  wrap.style.width = `${rect.width}px`;
+  if (window.gsap) {
+    gsap.set(wrap, { position: "fixed", left: 0, top: 0, margin: 0, x: rect.left, y: rect.top, zIndex: 48, opacity: 1, visibility: "visible" });
+  } else {
+    wrap.style.position = "fixed";
+    wrap.style.left = "0";
+    wrap.style.top = "0";
+    wrap.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+    wrap.style.zIndex = "48";
+    wrap.style.opacity = "1";
+    wrap.style.visibility = "visible";
+  }
+}
+
+function detachIntroButterfliesFromHeadline() {
+  detachIntroButterflyWrap(document.getElementById("introBflyWrapPink"));
+  detachIntroButterflyWrap(document.getElementById("introBflyWrapBlue"));
+}
+
+function tickIntroOrbit() {
+  if (!introOrbit.active || !window.gsap) return;
+  const t = (performance.now() - introOrbit.startTime) / 1000;
+  const roles = [
+    { role: "pink", wrapId: "introBflyWrapPink", bflyId: "introBflyPink" },
+    { role: "blue", wrapId: "introBflyWrapBlue", bflyId: "introBflyBlue" },
+  ];
+
+  roles.forEach(({ role, wrapId, bflyId }) => {
+    const wrap = document.getElementById(wrapId);
+    const bfly = document.getElementById(bflyId);
+    if (!wrap || !bfly) return;
+    const pt = getIntroOrbitPoint(role, t);
+    gsap.set(wrap, { x: pt.x, y: pt.y });
+    gsap.set(bfly, { rotation: pt.rotation });
+  });
+
+  introOrbitRaf = requestAnimationFrame(tickIntroOrbit);
+}
+
+function startIntroOrbitFlight() {
+  if (!window.gsap) return;
+  detachIntroButterfliesFromHeadline();
+
+  const roles = [
+    { role: "pink", wrapId: "introBflyWrapPink", bflyId: "introBflyPink" },
+    { role: "blue", wrapId: "introBflyWrapBlue", bflyId: "introBflyBlue" },
+  ];
+
+  let ready = 0;
+  const beginOrbit = () => {
+    ready += 1;
+    if (ready < roles.length) return;
+    introOrbit.active = true;
+    introOrbit.startTime = performance.now();
+    if (introOrbitRaf) cancelAnimationFrame(introOrbitRaf);
+    tickIntroOrbit();
+  };
+
+  roles.forEach(({ role, wrapId, bflyId }) => {
+    const wrap = document.getElementById(wrapId);
+    const bfly = document.getElementById(bflyId);
+    if (!wrap || !bfly) {
+      beginOrbit();
+      return;
+    }
+
+    bfly.classList.remove("is-intro-perched");
+    bfly.classList.add("is-flying", "is-circling");
+    const target = getIntroOrbitPoint(role, 0);
+
+    gsap.to(wrap, {
+      x: target.x,
+      y: target.y,
+      duration: 2.4,
+      ease: "power2.inOut",
+      onComplete: () => {
+        bfly.classList.remove("is-flying");
+        bfly.classList.add("is-circling");
+        beginOrbit();
+      },
+    });
+  });
+}
+
+function stopIntroOrbit() {
+  introOrbit.active = false;
+  if (introOrbitRaf) {
+    cancelAnimationFrame(introOrbitRaf);
+    introOrbitRaf = 0;
+  }
+}
+
+function hideIntroButterflies() {
+  stopIntroOrbit();
+  document.querySelectorAll(".intro-bfly-wrap").forEach((el) => {
+    el.style.display = "none";
+  });
+}
+
+function initIntroButterflies() {
+  const setup = () => mountIntroButterflies();
+  if (document.fonts?.ready) document.fonts.ready.then(setup);
+  else setup();
+  window.addEventListener("resize", positionIntroButterflies, { passive: true });
 }
 
 function flightSegmentDuration(a, b) {
@@ -393,8 +656,8 @@ function flightSegmentDuration(a, b) {
   return Math.max(0.16, Math.min(0.48, dist / 190));
 }
 
-function bflyLiveSize() {
-  const bfly = document.getElementById("heroBfly");
+function bflyLiveSize(role) {
+  const bfly = getBflyEl(role);
   return bfly?.offsetWidth || heroButterflySize(window.innerWidth * 0.9);
 }
 
@@ -431,40 +694,63 @@ function getTitleTextRect(el) {
   return el.getBoundingClientRect();
 }
 
-function bflyAnchorFromRect(rect, mode) {
-  const size = bflyLiveSize();
+function bflyAnchorFromRect(rect, mode, role) {
+  const cfg = getBflyCfg(role);
+  const size = bflyLiveSize(role);
   const hh = size * (168 / 200);
 
+  const nameGap = heroNamePerchGap(size);
+
   if (mode === "below-center") {
-    return { left: rect.left + rect.width / 2 - size / 2, top: rect.bottom + 8, rotation: 8 };
+    return {
+      left: rect.left + rect.width / 2 - size / 2,
+      top: rect.bottom + nameGap,
+      rotation: cfg.perchRotation,
+    };
+  }
+  if (mode === "above-center") {
+    return {
+      left: rect.left + rect.width / 2 - size / 2,
+      top: rect.top - hh - nameGap,
+      rotation: cfg.perchRotation,
+    };
   }
   if (mode === "title-top-right") {
     const gap = Math.max(10, size * 0.18);
-    return {
-      left: rect.right + gap,
-      top: rect.top - hh * 0.06,
-      rotation: 12,
-    };
+    return { left: rect.right + gap, top: rect.top - hh * 0.06, rotation: 12 };
   }
-  return { left: rect.left, top: rect.top, rotation: 8 };
+  if (mode === "title-top-left") {
+    const gap = Math.max(10, size * 0.18);
+    return { left: rect.left - gap - size * 0.72, top: rect.top - hh * 0.06, rotation: -12 };
+  }
+  return { left: rect.left, top: rect.top, rotation: cfg.perchRotation };
 }
 
-function getBflyStopAnchor(stopId) {
-  const stops = {
-    hero: { el: () => document.querySelector('[data-field="partner2"]'), mode: "below-center", text: false },
-    countdown: { el: () => document.querySelector("#countdown .script-title"), mode: "title-top-right", text: true },
-    celebrations: { el: () => document.querySelector("#events .script-title"), mode: "title-top-right", text: true },
-    dresscode: { el: () => document.querySelector("#dresscode .script-title"), mode: "title-top-right", text: true },
-    venue: { el: () => document.querySelector("#venue .script-title"), mode: "title-top-right", text: true },
-    rsvp: { el: () => document.querySelector("#rsvp .script-title"), mode: "title-top-right", text: true },
+function getTitleAnchorEl(stopId) {
+  const map = {
+    countdown: "#countdown .script-title",
+    celebrations: "#events .script-title",
+    dresscode: "#dresscode .script-title",
+    venue: "#venue .script-title",
+    rsvp: "#rsvp .script-title",
   };
-  const stop = stops[stopId];
-  if (!stop) return null;
-  const el = stop.el();
+  const sel = map[stopId];
+  return sel ? document.querySelector(sel) : null;
+}
+
+function getBflyStopAnchor(stopId, role) {
+  const cfg = getBflyCfg(role);
+  if (stopId === "hero") {
+    const el = document.querySelector(`[data-field="${cfg.partnerField}"]`);
+    if (!el) return null;
+    const mode = role === "blue" ? "above-center" : "below-center";
+    return bflyAnchorFromRect(el.getBoundingClientRect(), mode, role);
+  }
+  const el = getTitleAnchorEl(stopId);
   if (!el) return null;
-  const rect = stop.text ? getTitleTextRect(el) : el.getBoundingClientRect();
+  const rect = getTitleTextRect(el);
   if (!rect) return null;
-  return bflyAnchorFromRect(rect, stop.mode);
+  return bflyAnchorFromRect(rect, cfg.titleAnchor, role);
 }
 
 function applyPageBflyPos(bfly, anchor) {
@@ -488,18 +774,34 @@ function applyPageBflyPos(bfly, anchor) {
   }
 }
 
-function setBflyAtAnchor(stopId) {
-  const bfly = document.getElementById("heroBfly");
-  const target = getBflyStopAnchor(stopId);
+function setBflyAtAnchor(stopId, role) {
+  const bfly = getBflyEl(role);
+  const target = getBflyStopAnchor(stopId, role);
   if (!bfly || !target) return;
   applyPageBflyPos(bfly, target);
-  pageBfly.currentStop = stopId;
+  bflyState[role].currentStop = stopId;
+}
+
+function isFooterStopActive() {
+  const footer = document.getElementById("footer");
+  const logo = getFooterLogoRect();
+  if (!footer || !logo) return false;
+
+  const scrollBottom = window.scrollY + window.innerHeight;
+  const pageBottom = document.documentElement.scrollHeight;
+  const nearBottom = scrollBottom >= pageBottom - 200;
+  const logoOnScreen = logo.bottom > 6 && logo.top < window.innerHeight - 6;
+  const footerOnScreen = footer.getBoundingClientRect().top < window.innerHeight * 0.92;
+
+  return nearBottom && logoOnScreen && footerOnScreen;
 }
 
 function getActiveBflyStop() {
   const probeY = window.innerHeight * 0.36;
+  if (isFooterStopActive()) return "footer";
 
   for (const { id, el } of BFLY_SECTIONS) {
+    if (id === "footer") continue;
     const node = el();
     if (!node) continue;
     const r = node.getBoundingClientRect();
@@ -512,23 +814,240 @@ function getActiveBflyStop() {
     if (r.bottom > window.innerHeight * 0.12) return "hero";
   }
 
-  return pageBfly.currentStop || "hero";
+  return bflyState.pink.currentStop || "hero";
 }
 
-function followBflyAnchor(stopId) {
-  const bfly = document.getElementById("heroBfly");
-  const target = getBflyStopAnchor(stopId);
+function followBflyAnchor(stopId, role) {
+  const bfly = getBflyEl(role);
+  const target = getBflyStopAnchor(stopId, role);
   if (!bfly || !target) return;
   applyPageBflyPos(bfly, target);
 }
 
-function buildSectionTravelPath(fromX, fromY, target) {
-  const size = bflyLiveSize();
+function getFooterLogoRect() {
+  const logo = document.querySelector(".footer__mono");
+  return logo ? logo.getBoundingClientRect() : null;
+}
+
+function getFooterMergeAnchors() {
+  const rect = getFooterLogoRect();
+  if (!rect) return null;
+  const size = bflyLiveSize("pink");
+  const hh = size * (168 / 200);
+  const orbitR = size * 0.44;
+  const orbitVertical = orbitR * 0.7;
+  const gapAboveLogo = Math.max(12, size * 0.18);
+  const orbitCx = rect.left + rect.width / 2;
+  const orbitCy = rect.top - gapAboveLogo - orbitVertical;
+  const centerX = orbitCx - size / 2;
+  const centerY = orbitCy - hh / 2;
+  return {
+    center: { left: centerX, top: centerY, rotation: 4 },
+    orbitCx,
+    orbitCy,
+    pinkSide: { left: centerX + orbitR * 1.05, top: centerY - size * 0.05, rotation: 8 },
+    blueSide: { left: centerX - orbitR * 1.3, top: centerY - size * 0.05, rotation: -8 },
+  };
+}
+
+function getFooterMergeOrbitPoint(anchors, role, angleRad) {
+  if (!anchors) return { left: 0, top: 0, rotation: 0 };
+  const size = bflyLiveSize("pink");
+  const hh = size * (168 / 200);
+  const radius = size * 0.44;
+  const roleOffset = role === "pink" ? 0 : Math.PI;
+  const a = angleRad + roleOffset;
+  const cx = anchors.orbitCx;
+  const cy = anchors.orbitCy;
+  return {
+    left: cx + Math.cos(a) * radius - size / 2,
+    top: cy + Math.sin(a) * radius * 0.7 - hh / 2,
+    rotation: Math.sin(a) * 16 + (role === "pink" ? 5 : -5),
+  };
+}
+
+function appendMergeOrbit(tl, pink, blue, startAt, revolutions, duration) {
+  const steps = Math.max(10, Math.round(12 * revolutions));
+  const stepDur = duration / steps;
+  for (let i = 1; i <= steps; i++) {
+    const ang = (i / steps) * Math.PI * 2 * revolutions;
+    const t = startAt + (i - 1) * stepDur;
+    tl.to(pink, {
+      x: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "pink", ang).left,
+      y: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "pink", ang).top,
+      rotation: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "pink", ang).rotation,
+      duration: stepDur,
+      ease: "none",
+    }, t);
+    tl.to(blue, {
+      x: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "blue", ang).left,
+      y: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "blue", ang).top,
+      rotation: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "blue", ang).rotation,
+      duration: stepDur,
+      ease: "none",
+    }, t);
+  }
+  return startAt + duration;
+}
+
+function followFooterMerge() {
+  const anchors = getFooterMergeAnchors();
+  const pink = getBflyEl("pink");
+  if (!anchors || !pink) return;
+  applyPageBflyPos(pink, anchors.center);
+}
+
+function resetBflyMerge() {
+  if (!bflyMerge.active && !bflyMerge.running) return;
+  if (bflyMerge.tl) {
+    bflyMerge.tl.kill();
+    bflyMerge.tl = null;
+  }
+  bflyMerge.active = false;
+  bflyMerge.running = false;
+  const blue = getBflyEl("blue");
+  const pink = getBflyEl("pink");
+  if (blue) {
+    gsap.set(blue, { opacity: 1, scale: 1 });
+    blue.classList.remove("is-merged");
+  }
+  if (pink) {
+    pink.classList.remove("is-merged", "is-gold");
+    gsap.set(pink, { scale: 1 });
+  }
+}
+
+function finishBflyMerge() {
+  bflyMerge.running = false;
+  bflyMerge.active = true;
+  bflyMerge.tl = null;
+  bflyState.pink.currentStop = "footer";
+  bflyState.blue.currentStop = "footer";
+  bflyState.pink.flying = false;
+  bflyState.blue.flying = false;
+  bflyState.pink.flyingTo = null;
+  bflyState.blue.flyingTo = null;
+
+  const pink = getBflyEl("pink");
+  const blue = getBflyEl("blue");
+  if (pink) {
+    pink.classList.remove("is-flying", "is-circling");
+    pink.classList.add("is-perched", "is-merged", "is-gold");
+  }
+  if (blue) {
+    blue.classList.remove("is-flying", "is-circling", "is-perched");
+    gsap.set(blue, { opacity: 0, scale: 0.3 });
+  }
+  followFooterMerge();
+}
+
+function footerMergeApproachDuration(pink, blue) {
+  const anchors = getFooterMergeAnchors();
+  if (!anchors || !pink || !blue || !window.gsap) return 1.6;
+  const px = gsap.getProperty(pink, "x") || 0;
+  const py = gsap.getProperty(pink, "y") || 0;
+  const bx = gsap.getProperty(blue, "x") || 0;
+  const by = gsap.getProperty(blue, "y") || 0;
+  const pinkDist = Math.hypot(anchors.pinkSide.left - px, anchors.pinkSide.top - py);
+  const blueDist = Math.hypot(anchors.blueSide.left - bx, anchors.blueSide.top - by);
+  const dist = Math.max(pinkDist, blueDist);
+  return Math.max(0.85, Math.min(2.1, dist / 240));
+}
+
+function flyBflyMergeFinale() {
+  if (bflyMerge.active || bflyMerge.running || !anyBflyActive() || !window.gsap) return;
+  if (!isFooterStopActive()) return;
+  const anchors = getFooterMergeAnchors();
+  const pink = getBflyEl("pink");
+  const blue = getBflyEl("blue");
+  if (!anchors || !pink || !blue) return;
+
+  BFLY_ROLES.forEach((role) => stopBflyFlight(role));
+  bflyMerge.running = true;
+
+  pink.classList.remove("is-perched", "is-merged", "is-gold");
+  blue.classList.remove("is-perched", "is-merged");
+  pink.classList.add("is-flying", "is-circling");
+  blue.classList.add("is-flying", "is-circling");
+  gsap.set([pink, blue], { opacity: 1, scale: 1, visibility: "visible" });
+
+  const tl = gsap.timeline({ onComplete: finishBflyMerge });
+  bflyMerge.tl = tl;
+  const approachDur = footerMergeApproachDuration(pink, blue);
+  const orbitStart = approachDur + 0.15;
+  const orbitDur = 2.6;
+  const mergeStart = orbitStart + orbitDur + 0.1;
+
+  tl.to(pink, {
+    x: () => getFooterMergeAnchors()?.pinkSide.left ?? anchors.pinkSide.left,
+    y: () => getFooterMergeAnchors()?.pinkSide.top ?? anchors.pinkSide.top,
+    rotation: () => getFooterMergeAnchors()?.pinkSide.rotation ?? anchors.pinkSide.rotation,
+    duration: approachDur,
+    ease: "power2.inOut",
+  }, 0);
+  tl.to(blue, {
+    x: () => getFooterMergeAnchors()?.blueSide.left ?? anchors.blueSide.left,
+    y: () => getFooterMergeAnchors()?.blueSide.top ?? anchors.blueSide.top,
+    rotation: () => getFooterMergeAnchors()?.blueSide.rotation ?? anchors.blueSide.rotation,
+    duration: approachDur,
+    ease: "power2.inOut",
+  }, 0);
+
+  tl.to(pink, {
+    x: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "pink", 0).left,
+    y: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "pink", 0).top,
+    rotation: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "pink", 0).rotation,
+    duration: 0.35,
+    ease: "sine.inOut",
+  }, orbitStart - 0.35);
+  tl.to(blue, {
+    x: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "blue", 0).left,
+    y: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "blue", 0).top,
+    rotation: () => getFooterMergeOrbitPoint(getFooterMergeAnchors(), "blue", 0).rotation,
+    duration: 0.35,
+    ease: "sine.inOut",
+  }, orbitStart - 0.35);
+
+  appendMergeOrbit(tl, pink, blue, orbitStart, 1.35, orbitDur);
+
+  tl.to(pink, {
+    x: () => getFooterMergeAnchors()?.center.left ?? anchors.center.left,
+    y: () => getFooterMergeAnchors()?.center.top ?? anchors.center.top,
+    rotation: () => getFooterMergeAnchors()?.center.rotation ?? anchors.center.rotation,
+    duration: 0.75,
+    ease: "sine.inOut",
+  }, mergeStart);
+  tl.to(blue, {
+    x: () => getFooterMergeAnchors()?.center.left ?? anchors.center.left,
+    y: () => getFooterMergeAnchors()?.center.top ?? anchors.center.top,
+    rotation: 4,
+    duration: 0.75,
+    ease: "sine.inOut",
+  }, mergeStart);
+
+  const uniteAt = mergeStart + 0.8;
+  tl.to(blue, {
+    opacity: 0,
+    scale: 0.3,
+    duration: 0.85,
+    ease: "power2.in",
+  }, uniteAt);
+  tl.to(pink, {
+    scale: 1.08,
+    duration: 0.85,
+    ease: "power2.out",
+  }, uniteAt);
+  tl.call(() => pink.classList.add("is-gold"), null, uniteAt + 0.45);
+}
+
+function buildSectionTravelPath(fromX, fromY, target, role) {
+  const cfg = getBflyCfg(role);
+  const size = bflyLiveSize(role);
   const hh = size * (168 / 200);
   const px = target.left;
   const py = target.top;
   const r = Math.max(size * 1.45, 38);
-  const spin = Math.random() < 0.5 ? 1 : -1;
+  const spin = cfg.spin;
 
   return enrichFlightPoints([
     { x: fromX, y: fromY },
@@ -537,56 +1056,62 @@ function buildSectionTravelPath(fromX, fromY, target) {
     { x: px + r * 0.85 * spin, y: py - r * 0.5 },
     { x: px - r * 0.45 * spin, y: py - r * 0.08 },
     { x: px + r * 0.22 * spin, y: py + r * 0.32 },
-    { x: px + size * 0.12, y: py - hh * 0.16 },
+    { x: px + size * 0.12 * spin, y: py - hh * 0.16 },
   ]);
 }
 
-function stopBflyFlight(bfly) {
-  if (pageBfly.flightTl) {
-    pageBfly.flightTl.kill();
-    pageBfly.flightTl = null;
+function stopBflyFlight(role) {
+  const state = bflyState[role];
+  const bfly = getBflyEl(role);
+  if (state.flightTl) {
+    state.flightTl.kill();
+    state.flightTl = null;
   }
   if (bfly) gsap.killTweensOf(bfly);
-  pageBfly.flying = false;
-  pageBfly.flyingTo = null;
+  state.flying = false;
+  state.flyingTo = null;
   if (bfly) bfly.classList.remove("is-flying", "is-circling");
 }
 
-function finishBflyLanding(bfly, stopId) {
-  pageBfly.flightTl = null;
-  pageBfly.flying = false;
-  pageBfly.flyingTo = null;
-  pageBfly.currentStop = stopId;
+function finishBflyLanding(role, stopId) {
+  const state = bflyState[role];
+  const bfly = getBflyEl(role);
+  state.flightTl = null;
+  state.flying = false;
+  state.flyingTo = null;
+  state.currentStop = stopId;
+  if (!bfly) return;
   bfly.classList.remove("is-flying", "is-circling");
   bfly.classList.add("is-perched");
-  followBflyAnchor(stopId);
+  followBflyAnchor(stopId, role);
 }
 
-function flyBflyToStop(stopId) {
-  if (!pageBfly.active) return;
-  const bfly = document.getElementById("heroBfly");
-  const target = getBflyStopAnchor(stopId);
-  if (!bfly || !target || !window.gsap) return;
+function flyBflyToStop(stopId, role) {
+  if (stopId === "footer") return;
+  const state = bflyState[role];
+  const bfly = getBflyEl(role);
+  const target = getBflyStopAnchor(stopId, role);
+  if (!state.active || !bfly || !target || !window.gsap) return;
 
-  if (stopId === pageBfly.currentStop && !pageBfly.flying) {
-    followBflyAnchor(stopId);
+  if (stopId === state.currentStop && !state.flying) {
+    followBflyAnchor(stopId, role);
     return;
   }
 
-  if (pageBfly.flying && pageBfly.flyingTo === stopId) return;
+  if (state.flying && state.flyingTo === stopId) return;
 
   const fromX = gsap.getProperty(bfly, "x") || 0;
   const fromY = gsap.getProperty(bfly, "y") || 0;
 
-  stopBflyFlight(bfly);
+  stopBflyFlight(role);
 
-  pageBfly.flying = true;
-  pageBfly.flyingTo = stopId;
+  state.flying = true;
+  state.flyingTo = stopId;
   bfly.classList.remove("is-perched");
   bfly.classList.add("is-flying", "is-circling");
   gsap.set(bfly, { position: "fixed", left: 0, top: 0, margin: 0, opacity: 1 });
 
-  const flightPath = buildSectionTravelPath(fromX, fromY, target);
+  const flightPath = buildSectionTravelPath(fromX, fromY, target, role);
   const travelSegs = 3;
   const orbitSegs = flightPath.length - 1 - travelSegs;
   const travelDur = 3.1;
@@ -594,9 +1119,9 @@ function flyBflyToStop(stopId) {
   const landDur = 1.35;
 
   const tl = gsap.timeline({
-    onComplete: () => finishBflyLanding(bfly, stopId),
+    onComplete: () => finishBflyLanding(role, stopId),
   });
-  pageBfly.flightTl = tl;
+  state.flightTl = tl;
 
   flightPath.slice(1).forEach((point, i) => {
     const isTravel = i < travelSegs;
@@ -612,53 +1137,86 @@ function flyBflyToStop(stopId) {
   });
 
   tl.to(bfly, {
-    x: () => getBflyStopAnchor(stopId)?.left ?? target.left,
-    y: () => getBflyStopAnchor(stopId)?.top ?? target.top,
-    rotation: () => getBflyStopAnchor(stopId)?.rotation ?? target.rotation,
+    x: () => getBflyStopAnchor(stopId, role)?.left ?? target.left,
+    y: () => getBflyStopAnchor(stopId, role)?.top ?? target.top,
+    rotation: () => getBflyStopAnchor(stopId, role)?.rotation ?? target.rotation,
     scale: 1,
     duration: landDur,
     ease: "power1.out",
   });
 }
 
+function tickBflyRole(role, stop) {
+  const state = bflyState[role];
+  if (!state.active) return;
+
+  if (bflyMerge.running) return;
+
+  if (state.flying) {
+    if (stop !== state.flyingTo) flyBflyToStop(stop, role);
+    return;
+  }
+
+  if (stop !== state.currentStop) {
+    flyBflyToStop(stop, role);
+    return;
+  }
+
+  followBflyAnchor(stop, role);
+}
+
 function tickBflyOnScroll() {
-  if (!pageBfly.active) return;
   const stop = getActiveBflyStop();
   if (!stop) return;
 
-  if (pageBfly.flying) {
-    if (stop !== pageBfly.flyingTo) flyBflyToStop(stop);
+  if (stop === "footer") {
+    if (!bflyMerge.active && !bflyMerge.running) flyBflyMergeFinale();
+    else if (bflyMerge.active) followFooterMerge();
     return;
   }
 
-  if (stop !== pageBfly.currentStop) {
-    flyBflyToStop(stop);
-    return;
-  }
+  if (bflyMerge.active || bflyMerge.running) resetBflyMerge();
 
-  followBflyAnchor(stop);
+  BFLY_ROLES.forEach((role) => tickBflyRole(role, stop));
+}
+
+function anyBflyActive() {
+  return BFLY_ROLES.some((role) => bflyState[role].active);
 }
 
 function scheduleBflyScrollTick() {
-  if (!pageBfly.active || bflyScrollRaf) return;
-  bflyScrollRaf = requestAnimationFrame(() => {
-    bflyScrollRaf = 0;
+  if (!anyBflyActive()) return;
+  if (!bflyScrollRaf) {
+    bflyScrollRaf = requestAnimationFrame(() => {
+      bflyScrollRaf = 0;
+      tickBflyOnScroll();
+    });
+  }
+  clearTimeout(bflyScrollEndTimer);
+  bflyScrollEndTimer = setTimeout(() => {
     tickBflyOnScroll();
-  });
+  }, 120);
 }
 
 function bindBflyScroll() {
-  if (pageBfly.scrollBound) return;
-  pageBfly.scrollBound = true;
+  if (bflyScrollBound) return;
+  bflyScrollBound = true;
   window.addEventListener("scroll", scheduleBflyScrollTick, { passive: true });
+  window.addEventListener("resize", onBflyResize, { passive: true });
+  if ("onscrollend" in window) {
+    window.addEventListener("scrollend", scheduleBflyScrollTick, { passive: true });
+  }
 }
 
-function promoteButterflyToPage(bfly) {
-  const wrap = document.getElementById("heroButterfly");
-  if (!wrap || !bfly || pageBfly.active) return;
+function promoteButterflyToPage(role) {
+  const cfg = getBflyCfg(role);
+  const state = bflyState[role];
+  const bfly = getBflyEl(role);
+  const wrap = document.getElementById(cfg.wrapId);
+  if (!wrap || !bfly || state.active) return;
 
   const rect = bfly.getBoundingClientRect();
-  const rotation = window.gsap ? (gsap.getProperty(bfly, "rotation") || 8) : 8;
+  const rotation = window.gsap ? (gsap.getProperty(bfly, "rotation") || cfg.perchRotation) : cfg.perchRotation;
   const scale = window.gsap ? (gsap.getProperty(bfly, "scale") || 1) : 1;
 
   wrap.classList.add("companion-bfly");
@@ -686,23 +1244,27 @@ function promoteButterflyToPage(bfly) {
     bfly.style.opacity = "1";
   }
 
-  pageBfly.active = true;
-  pageBfly.currentStop = "hero";
+  state.active = true;
+  state.currentStop = "hero";
 
-  bindBflyScroll();
+  if (!bflyScrollBound) bindBflyScroll();
   scheduleBflyScrollTick();
-
-  window.addEventListener("resize", onBflyResize, { passive: true });
 }
 
 function onBflyResize() {
-  if (!pageBfly.active || pageBfly.flying) return;
-  setBflyAtAnchor(pageBfly.currentStop);
+  if (bflyMerge.active) {
+    followFooterMerge();
+    return;
+  }
+  BFLY_ROLES.forEach((role) => {
+    const state = bflyState[role];
+    if (state.active && !state.flying) setBflyAtAnchor(state.currentStop, role);
+  });
 }
 
-function perchHeroButterfly() {
-  const bfly = document.getElementById("heroBfly");
-  const perch = getHeroButterflyPerch();
+function perchHeroButterfly(role) {
+  const bfly = getBflyEl(role);
+  const perch = getHeroButterflyPerch(role);
   if (!bfly || !perch) return;
 
   bfly.classList.add("is-visible", "is-perched");
@@ -717,32 +1279,31 @@ function perchHeroButterfly() {
     bfly.style.transform = `translate(${perch.x}px, ${perch.y}px) rotate(${perch.rotation}deg) scale(${perch.scale})`;
     bfly.style.opacity = "1";
   }
-  promoteButterflyToPage(bfly);
+  promoteButterflyToPage(role);
 }
 
-function flyHeroButterfly() {
-  if (heroButterflyStarted) return;
-  const bfly = document.getElementById("heroBfly");
+function flyHeroButterfly(role, flightPath) {
+  const state = bflyState[role];
+  if (state.heroStarted) return;
+  const bfly = getBflyEl(role);
   const oval = document.querySelector(".hero__oval");
-  const layout = getHeroButterflyLayout();
-  if (!bfly || !oval || !layout) return;
+  if (!bfly || !oval || !flightPath?.length) return;
 
-  const { perch } = layout;
-  heroButterflyStarted = true;
+  state.heroStarted = true;
   bfly.classList.add("is-visible");
 
   if (reducedMotion || !window.gsap) {
-    perchHeroButterfly();
+    perchHeroButterfly(role);
     return;
   }
 
-  const flightPath = buildHeroNaturalPath(layout);
   const entry = flightPath[0];
+  const cfg = getBflyCfg(role);
 
   gsap.set(bfly, {
     x: entry.x,
     y: entry.y,
-    rotation: entry.rotation ?? -28,
+    rotation: entry.rotation ?? (cfg.spin > 0 ? -28 : 28),
     scale: 0.82,
     opacity: 0,
   });
@@ -752,30 +1313,41 @@ function flyHeroButterfly() {
   tl.to(bfly, { opacity: 1, duration: 0.35, ease: "sine.out" })
     .add(() => bfly.classList.add("is-circling"), 0.1);
 
-  let prev = entry;
+  const wanderCount = 5;
   flightPath.slice(1).forEach((point, i) => {
     const isLanding = i === flightPath.length - 2;
+    const isApproach = i === flightPath.length - 3;
+    let duration = HERO_FLYOVER_DURATION / wanderCount;
+    if (isApproach) duration = 0.45;
+    else if (isLanding) duration = 1.05;
+    else if (i >= wanderCount) duration = 0.45;
+
     tl.to(bfly, {
       x: point.x,
       y: point.y,
       rotation: point.rotation,
       scale: point.scale,
-      duration: isLanding ? 1.05 : flightSegmentDuration(prev, point),
-      ease: isLanding ? "power2.out" : "sine.inOut",
+      duration,
+      ease: isLanding ? "power2.out" : isApproach ? "sine.inOut" : "none",
     });
-    prev = point;
   });
 
   tl.add(() => {
     bfly.classList.remove("is-circling", "is-flying");
     bfly.classList.add("is-perched");
-    promoteButterflyToPage(bfly);
+    promoteButterflyToPage(role);
   });
 }
 
 function scheduleHeroButterfly() {
-  if (heroButterflyStarted) return;
-  const run = () => flyHeroButterfly();
+  const run = () => {
+    const pinkLayout = getHeroButterflyLayout("pink");
+    const blueLayout = getHeroButterflyLayout("blue");
+    if (!pinkLayout || !blueLayout) return;
+    flyHeroButterfly("pink", buildHeroFlyoverPath(pinkLayout, "pink"));
+    flyHeroButterfly("blue", buildHeroFlyoverPath(blueLayout, "blue"));
+  };
+  if (BFLY_ROLES.every((role) => bflyState[role].heroStarted)) return;
   if (document.fonts?.ready) {
     document.fonts.ready.then(run);
   } else {
@@ -1375,6 +1947,8 @@ function initIntro() {
   const names = document.getElementById("introNames");
   const body = document.body;
 
+  initIntroButterflies();
+
   if (!intro || !envelope) {
     body.classList.remove("intro-active");
     revealHero();
@@ -1392,6 +1966,7 @@ function initIntro() {
   function finish() {
     if (canvas) canvas.dataset.active = "0";
     window.resumeAmbientParticles?.();
+    hideIntroButterflies();
     intro.classList.add("is-done");
     body.classList.remove("intro-active");
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -1694,7 +2269,11 @@ function initIntro() {
         curtainBloom.style.transform = "translate(-50%, -50%) scale(1)";
       }
       CinematicAudio.swellMusic(0.38, 1.5);
-      setTimeout(runCanvasIntro, 300);
+      detachIntroButterfliesFromHeadline();
+      setTimeout(() => {
+        runCanvasIntro();
+        startIntroOrbitFlight();
+      }, 300);
       return;
     }
 
@@ -1770,6 +2349,7 @@ function initIntro() {
     tl.call(() => envelope.classList.add("is-pulsing"), null, 2.2);
 
     // 4) Envelope splits — both halves open forward toward the viewer
+    tl.call(detachIntroButterfliesFromHeadline, null, 2.45);
     if (headline) tl.to(headline, { autoAlpha: 0, y: -16, duration: 0.8, ease: "power2.in" }, 2.5);
     tl.call(() => envelope.classList.add("is-opening", "is-open"), null, 2.6);
     if (envTop && envBottom) {
@@ -1819,6 +2399,7 @@ function initIntro() {
       CinematicAudio.playWhoosh();
       CinematicAudio.swellMusic(0.42, 3);
       runCanvasIntro();
+      startIntroOrbitFlight();
     }, null, 5.95);
     if (curtainLeft) drapeCurtain(curtainLeft, "left", tl, 5.95, 0);
     if (curtainRight) drapeCurtain(curtainRight, "right", tl, 5.95, 0.12);
